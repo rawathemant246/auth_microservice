@@ -1,0 +1,110 @@
+services:
+  api: &main_app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: auth_microservice:${AUTH_MICROSERVICE_VERSION:-latest}
+    restart: always
+    env_file:
+      - .env
+    labels:
+      # Enables traefik for this container.
+      - traefik.enable=true
+      - traefik.http.routers.auth_microservice.rule=Host(`${AUTH_MICROSERVICE_TRAEFIK_HOST:-auth_microservice.localhost}`)
+      - traefik.http.routers.auth_microservice.entrypoints=http
+      - traefik.http.routers.auth_microservice.service=auth_microservice
+      - traefik.http.services.auth_microservice.loadbalancer.server.port=${AUTH_MICROSERVICE_PORT:-8000}
+    networks:
+      - default
+      - traefik-shared
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rmq:
+        condition: service_healthy
+    environment:
+      AUTH_MICROSERVICE_HOST: 0.0.0.0
+      AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
+      AUTH_MICROSERVICE_DB_PORT: 5432
+      AUTH_MICROSERVICE_DB_USER: auth_microservice
+      AUTH_MICROSERVICE_DB_PASS: auth_microservice
+      AUTH_MICROSERVICE_DB_BASE: auth_microservice
+      AUTH_MICROSERVICE_RABBIT_HOST: auth_microservice-rmq
+      AUTH_MICROSERVICE_REDIS_HOST: auth_microservice-redis
+
+  taskiq-worker:
+    <<: *main_app
+    labels: []
+    command:
+      - taskiq
+      - worker
+      - auth_microservice.tkq:broker
+
+  db:
+    image: postgres:16.3-bullseye
+    hostname: auth_microservice-db
+    environment:
+      POSTGRES_PASSWORD: "auth_microservice"
+      POSTGRES_USER: "auth_microservice"
+      POSTGRES_DB: "auth_microservice"
+    volumes:
+      - auth_microservice-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: pg_isready -U auth_microservice
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    image: auth_microservice:${AUTH_MICROSERVICE_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    environment:
+      AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
+      AUTH_MICROSERVICE_DB_PORT: 5432
+      AUTH_MICROSERVICE_DB_USER: auth_microservice
+      AUTH_MICROSERVICE_DB_PASS: auth_microservice
+      AUTH_MICROSERVICE_DB_BASE: auth_microservice
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: bitnami/redis:6.2.5
+    hostname: "auth_microservice-redis"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: redis-cli ping
+      interval: 1s
+      timeout: 3s
+      retries: 50
+
+  rmq:
+    image: rabbitmq:3.9.16-alpine
+    hostname: "auth_microservice-rmq"
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+      RABBITMQ_DEFAULT_VHOST: "/"
+    healthcheck:
+      test: rabbitmq-diagnostics check_running -q
+      interval: 3s
+      timeout: 3s
+      retries: 50
+
+
+
+volumes:
+  auth_microservice-db-data:
+    name: auth_microservice-db-data
+
+networks:
+  # Network for traefik.
+  traefik-shared:
+    name: traefik-shared
