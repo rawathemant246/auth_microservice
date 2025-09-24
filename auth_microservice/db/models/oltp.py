@@ -318,7 +318,7 @@ class User(Base):
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="users")
     role: Mapped[Role | None] = relationship("Role", back_populates="users")
-    contact_information: Mapped["ContactInformation" | None] = relationship(
+    contact_information: Mapped["ContactInformation | None"] = relationship(
         "ContactInformation", back_populates="user", uselist=False
     )
     login_records: Mapped[list["UserLogin"]] = relationship(
