@@ -1,46 +1,52 @@
+x-app-base: &app-base
+  restart: always
+  env_file:
+    - .env
+  labels:
+    - traefik.enable=true
+    - traefik.http.routers.auth_microservice.rule=Host(`${AUTH_MICROSERVICE_TRAEFIK_HOST:-auth_microservice.localhost}`)
+    - traefik.http.routers.auth_microservice.entrypoints=http
+    - traefik.http.routers.auth_microservice.service=auth_microservice
+    - traefik.http.services.auth_microservice.loadbalancer.server.port=${AUTH_MICROSERVICE_PORT:-8000}
+  networks:
+    - default
+    - traefik-shared
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    rmq:
+      condition: service_healthy
+    mongo:
+      condition: service_healthy
+  environment:
+    AUTH_MICROSERVICE_HOST: 0.0.0.0
+    AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
+    AUTH_MICROSERVICE_DB_PORT: 5432
+    AUTH_MICROSERVICE_DB_USER: auth_microservice
+    AUTH_MICROSERVICE_DB_PASS: auth_microservice
+    AUTH_MICROSERVICE_DB_BASE: auth_microservice
+    AUTH_MICROSERVICE_RABBIT_HOST: auth_microservice-rmq
+    AUTH_MICROSERVICE_REDIS_HOST: auth_microservice-redis
+    AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
+    AUTH_MICROSERVICE_MONGODB_DATABASE: auth_documents
+
 services:
-  api: &main_app
+  api:
+    <<: *app-base
     build:
       context: .
       dockerfile: ./Dockerfile
     image: auth_microservice:${AUTH_MICROSERVICE_VERSION:-latest}
-    restart: always
-    env_file:
-      - .env
-    labels:
-      # Enables traefik for this container.
-      - traefik.enable=true
-      - traefik.http.routers.auth_microservice.rule=Host(`${AUTH_MICROSERVICE_TRAEFIK_HOST:-auth_microservice.localhost}`)
-      - traefik.http.routers.auth_microservice.entrypoints=http
-      - traefik.http.routers.auth_microservice.service=auth_microservice
-      - traefik.http.services.auth_microservice.loadbalancer.server.port=${AUTH_MICROSERVICE_PORT:-8000}
-    networks:
-      - default
-      - traefik-shared
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rmq:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-    environment:
-      AUTH_MICROSERVICE_HOST: 0.0.0.0
-      AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
-      AUTH_MICROSERVICE_DB_PORT: 5432
-      AUTH_MICROSERVICE_DB_USER: auth_microservice
-      AUTH_MICROSERVICE_DB_PASS: auth_microservice
-      AUTH_MICROSERVICE_DB_BASE: auth_microservice
-      AUTH_MICROSERVICE_RABBIT_HOST: auth_microservice-rmq
-      AUTH_MICROSERVICE_REDIS_HOST: auth_microservice-redis
-      AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
-      AUTH_MICROSERVICE_MONGODB_DATABASE: auth_documents
+    ports:
+      - "8000:8000"
 
   taskiq-worker:
-    <<: *main_app
+    <<: *app-base
+    image: auth_microservice:${AUTH_MICROSERVICE_VERSION:-latest}
     labels: []
+    ports: []
     command:
       - taskiq
       - worker
@@ -63,17 +69,12 @@ services:
       retries: 40
 
   migrator:
+    <<: *app-base
     image: auth_microservice:${AUTH_MICROSERVICE_VERSION:-latest}
-    restart: "no"
     command: alembic upgrade head
-    environment:
-      AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
-      AUTH_MICROSERVICE_DB_PORT: 5432
-      AUTH_MICROSERVICE_DB_USER: auth_microservice
-      AUTH_MICROSERVICE_DB_PASS: auth_microservice
-      AUTH_MICROSERVICE_DB_BASE: auth_microservice
-      AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
-      AUTH_MICROSERVICE_MONGODB_DATABASE: auth_documents
+    restart: "no"
+    labels: []
+    ports: []
     depends_on:
       db:
         condition: service_healthy
@@ -116,8 +117,6 @@ services:
       timeout: 3s
       retries: 20
 
-
-
 volumes:
   auth_microservice-db-data:
     name: auth_microservice-db-data
@@ -125,6 +124,5 @@ volumes:
     name: auth_microservice-mongo-data
 
 networks:
-  # Network for traefik.
   traefik-shared:
     name: traefik-shared
