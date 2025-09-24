@@ -24,9 +24,9 @@ x-app-base: &app-base
     AUTH_MICROSERVICE_HOST: 0.0.0.0
     AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
     AUTH_MICROSERVICE_DB_PORT: 5432
-    AUTH_MICROSERVICE_DB_USER: auth_microservice
-    AUTH_MICROSERVICE_DB_PASS: auth_microservice
-    AUTH_MICROSERVICE_DB_BASE: auth_microservice
+    AUTH_MICROSERVICE_DB_USER: ${AUTH_MICROSERVICE_DB_USER:-auth_microservice}
+    AUTH_MICROSERVICE_DB_PASS: ${AUTH_MICROSERVICE_DB_PASS:-auth_microservice}
+    AUTH_MICROSERVICE_DB_BASE: ${AUTH_MICROSERVICE_DB_BASE:-auth_microservice}
     AUTH_MICROSERVICE_RABBIT_HOST: auth_microservice-rmq
     AUTH_MICROSERVICE_REDIS_HOST: auth_microservice-redis
     AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
@@ -56,14 +56,18 @@ services:
     image: postgres:16.3-bullseye
     hostname: auth_microservice-db
     environment:
-      POSTGRES_PASSWORD: "auth_microservice"
-      POSTGRES_USER: "auth_microservice"
-      POSTGRES_DB: "auth_microservice"
+      POSTGRES_PASSWORD: "${AUTH_MICROSERVICE_DB_PASS:-auth_microservice}"
+      POSTGRES_USER: "${AUTH_MICROSERVICE_DB_USER:-auth_microservice}"
+      POSTGRES_DB: "${AUTH_MICROSERVICE_DB_BASE:-auth_microservice}"
     volumes:
       - auth_microservice-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
     restart: always
     healthcheck:
-      test: pg_isready -U auth_microservice
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${AUTH_MICROSERVICE_DB_USER:-auth_microservice}
       interval: 2s
       timeout: 3s
       retries: 40
@@ -109,6 +113,8 @@ services:
     image: mongo:6.0
     hostname: "auth_microservice-mongo"
     restart: always
+    ports:
+      - "27018:27017"
     volumes:
       - auth_microservice-mongo-data:/data/db
     healthcheck:

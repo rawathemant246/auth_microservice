@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-me")
     jwt_algorithm: str = "HS256"
     jwt_access_token_expires_minutes: int = 60 * 24
+    jwt_refresh_token_expires_minutes: int = 60 * 24 * 14
+    password_reset_token_expires_minutes: int = 60
 
     # Casdoor and SSO configuration
     casdoor_endpoint: str = "http://localhost:8000"
