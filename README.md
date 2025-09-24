@@ -7,6 +7,15 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 - **pycasbin** to evaluate role/permission policies stored in Postgres.
 - **Casdoor** (Google SSO) integration for federated login flows.
 
+## Features
+
+- FastAPI-based REST API with JWT authentication and Google SSO via Casdoor.
+- Polyglot persistence: PostgreSQL for transactional data, MongoDB for organization settings.
+- Alembic migrations including seeded RBAC roles/permissions.
+- RBAC enforcement using pycasbin with policies pulled from Postgres.
+- Taskiq worker for background jobs with RabbitMQ and Redis integration.
+- Prometheus metrics endpoint and pre-configured Grafana dashboards.
+
 ## Quick start with Docker Compose
 
 1. Copy the provided `.env` and adjust secrets as needed (JWT, Casdoor credentials, etc.).
