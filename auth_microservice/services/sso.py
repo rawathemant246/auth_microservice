@@ -14,12 +14,15 @@ class CasdoorService:
     """Service wrapper around Casdoor SDK configured for Google SSO only."""
 
     def __init__(self) -> None:
+        # CasdoorSDK signature: (endpoint, client_id, client_secret,
+        # certificate, organization_name, application_name).
         self._sdk = CasdoorSDK(
-            endpoint=settings.casdoor_endpoint,
-            client_id=settings.casdoor_client_id,
-            client_secret=settings.casdoor_client_secret,
-            organization_name=settings.casdoor_organization_name,
-            application_name=settings.casdoor_application_name,
+            settings.casdoor_endpoint,
+            settings.casdoor_client_id,
+            settings.casdoor_client_secret,
+            "",
+            settings.casdoor_organization_name,
+            settings.casdoor_application_name,
         )
 
     def get_login_url(self, redirect_uri: str, state: str) -> str:

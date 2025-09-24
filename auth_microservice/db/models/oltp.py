@@ -199,7 +199,7 @@ class Organization(Base):
         DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
     )
 
-    users: Mapped[list["User"]] = relationship("User", back_populates="organization")
+    users: Mapped[list["User"]] = relationship("User", back_populates="organization", foreign_keys="User.organization_id", primaryjoin="Organization.organization_id == User.organization_id")
     roles: Mapped[list["Role"]] = relationship("Role", back_populates="organization")
     subscriptions: Mapped[list["Subscription"]] = relationship(
         "Subscription", back_populates="organization"
@@ -279,7 +279,10 @@ class RolePermission(Base):
 
     role: Mapped[Role] = relationship("Role", back_populates="role_permissions")
     permission: Mapped[Permission] = relationship("Permission", back_populates="role_permissions")
-    organization: Mapped[Organization] = relationship("Organization")
+    organization: Mapped[Organization] = relationship(
+        "Organization",
+        foreign_keys=[organization_id],
+    )
 
 
 class User(Base):
@@ -316,7 +319,12 @@ class User(Base):
     )
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    organization: Mapped[Organization] = relationship("Organization", back_populates="users")
+    organization: Mapped[Organization] = relationship(
+        "Organization",
+        back_populates="users",
+        foreign_keys=[organization_id],
+        primaryjoin="User.organization_id == Organization.organization_id",
+    )
     role: Mapped[Role | None] = relationship("Role", back_populates="users")
     contact_information: Mapped["ContactInformation | None"] = relationship(
         "ContactInformation", back_populates="user", uselist=False

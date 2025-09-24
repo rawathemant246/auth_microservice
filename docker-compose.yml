@@ -24,6 +24,8 @@ services:
         condition: service_healthy
       rmq:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
     environment:
       AUTH_MICROSERVICE_HOST: 0.0.0.0
       AUTH_MICROSERVICE_DB_HOST: auth_microservice-db
@@ -33,6 +35,8 @@ services:
       AUTH_MICROSERVICE_DB_BASE: auth_microservice
       AUTH_MICROSERVICE_RABBIT_HOST: auth_microservice-rmq
       AUTH_MICROSERVICE_REDIS_HOST: auth_microservice-redis
+      AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
+      AUTH_MICROSERVICE_MONGODB_DATABASE: auth_documents
 
   taskiq-worker:
     <<: *main_app
@@ -68,6 +72,8 @@ services:
       AUTH_MICROSERVICE_DB_USER: auth_microservice
       AUTH_MICROSERVICE_DB_PASS: auth_microservice
       AUTH_MICROSERVICE_DB_BASE: auth_microservice
+      AUTH_MICROSERVICE_MONGODB_URI: mongodb://auth_microservice-mongo:27017
+      AUTH_MICROSERVICE_MONGODB_DATABASE: auth_documents
     depends_on:
       db:
         condition: service_healthy
@@ -98,11 +104,25 @@ services:
       timeout: 3s
       retries: 50
 
+  mongo:
+    image: mongo:6.0
+    hostname: "auth_microservice-mongo"
+    restart: always
+    volumes:
+      - auth_microservice-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 
 
 volumes:
   auth_microservice-db-data:
     name: auth_microservice-db-data
+  auth_microservice-mongo-data:
+    name: auth_microservice-mongo-data
 
 networks:
   # Network for traefik.
