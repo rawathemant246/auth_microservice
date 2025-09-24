@@ -1,0 +1,30 @@
+groups:
+  - name: auth_microservice.rules
+    interval: 30s
+    rules:
+      - alert: ApiDown
+        expr: up{job="auth_microservice"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Auth microservice is down"
+          description: "Prometheus has not scraped metrics from the API for at least 1 minute."
+
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total{path!~"/metrics"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "5xx responses exceed 5% of total traffic for the last 5 minutes."
+
+      - alert: SlowP95Latency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API latency elevated"
+          description: "p95 latency exceeded 500ms for the last 10 minutes."

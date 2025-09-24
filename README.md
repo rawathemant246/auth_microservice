@@ -64,6 +64,21 @@ Grafana automatically discovers the Prometheus datasource configured in `deploy/
 - FastAPI exposes metrics at `http://localhost:8000/metrics` (the same endpoint Prometheus scrapes by default).
 - Update `deploy/prometheus/prometheus.yml` if you change the API port or add additional scrape targets.
 
+### Prebuilt dashboards
+
+- Grafana auto-loads the `Auth Microservice Overview` dashboard from `deploy/grafana/dashboards/auth_microservice_overview.json`.
+- The dashboard appears under the *General* folder—duplicate it before customizing to keep the JSON source intact.
+
+### Alerting rules
+
+- Prometheus evaluates alert definitions in `deploy/prometheus/alerts.yml` (API down, high error rate, high latency).
+- Extend the Prometheus configuration to wire these alerts into Alertmanager, Slack, PagerDuty, etc.
+- After editing dashboards or alert rules, refresh the monitoring services:
+  ```bash
+  docker compose up -d prometheus grafana
+  ```
+
+
 
 ## Environment variables
 
