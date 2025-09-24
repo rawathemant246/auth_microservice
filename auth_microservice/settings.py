@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     casdoor_organization_name: str = ""
     casdoor_application_name: str = ""
 
+    # Grafana (monitoring) configuration
+    grafana_admin_user: Optional[str] = None
+    grafana_admin_password: Optional[str] = None
+
     # Variables for Redis
     redis_host: str = "auth_microservice-redis"
     redis_port: int = 6379
