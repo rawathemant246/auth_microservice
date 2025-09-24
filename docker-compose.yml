@@ -117,11 +117,46 @@ services:
       timeout: 3s
       retries: 20
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: always
+    depends_on:
+      api:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"
+    restart: always
+    depends_on:
+      prometheus:
+        condition: service_started
+
 volumes:
   auth_microservice-db-data:
     name: auth_microservice-db-data
   auth_microservice-mongo-data:
     name: auth_microservice-mongo-data
+  prometheus-data:
+    name: auth_microservice-prometheus-data
+  grafana-data:
+    name: auth_microservice-grafana-data
 
 networks:
   traefik-shared:

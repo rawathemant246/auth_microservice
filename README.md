@@ -18,9 +18,9 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
    ```bash
    docker compose run --rm migrator
    ```
-4. Bring up the API and worker services (Postgres, MongoDB, Redis, and RabbitMQ start automatically):
+4. Bring up the API, worker, and monitoring stack (Prometheus & Grafana):
    ```bash
-   docker compose up -d api taskiq-worker
+   docker compose up -d api taskiq-worker prometheus grafana
    ```
 5. Tail logs or inspect health:
    ```bash
@@ -40,6 +40,21 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 | `mongo`            | `auth_microservice-mongo`     | MongoDB 6 for organization documents       |
 | `redis`            | `auth_microservice-redis`     | Redis cache / Taskiq backend               |
 | `rmq`              | `auth_microservice-rmq`       | RabbitMQ broker                            |
+| `prometheus`       | `auth_microservice-prometheus`| Metrics collection (/metrics scrape)       |
+| `grafana`          | `auth_microservice-grafana`   | Pre-provisioned Prometheus datasource      |
+
+### Observability dashboards
+
+- Prometheus UI: [http://localhost:9090](http://localhost:9090)
+- Grafana UI: [http://localhost:3000](http://localhost:3000) (default credentials `admin` / `admin`).
+
+Grafana automatically discovers the Prometheus datasource configured in `deploy/grafana/provisioning/datasources/datasource.yml`. Import any preferred FastAPI dashboards or create custom panels using the `Prometheus` datasource.
+
+### Metrics endpoint
+
+- FastAPI exposes metrics at `http://localhost:8000/metrics` (the same endpoint Prometheus scrapes by default).
+- Update `deploy/prometheus/prometheus.yml` if you change the API port or add additional scrape targets.
+
 
 ## Environment variables
 
@@ -51,6 +66,7 @@ All configuration is driven through the `.env` file (autoloaded by docker-compos
 | `AUTH_MICROSERVICE_MONGODB_URI` / `AUTH_MICROSERVICE_MONGODB_DATABASE` | Connection target for the Mongo document store. |
 | `AUTH_MICROSERVICE_JWT_SECRET_KEY` / `USERS_SECRET` | Secrets for issuing/validating access tokens. Change for production. |
 | `AUTH_MICROSERVICE_CASDOOR_*` | Casdoor endpoint and client credentials for Google SSO. |
+| `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` | Override Grafana's admin credentials (defaults to `admin`/`admin`). |
 
 Update these values before deploying to any shared environment. Casdoor itself is not part of this compose stack—you must supply credentials for your hosted Casdoor instance.
 
