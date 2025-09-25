@@ -16,6 +16,110 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 - Taskiq worker for background jobs with RabbitMQ and Redis integration.
 - Prometheus metrics endpoint and pre-configured Grafana dashboards.
 
+## REST API
+
+### Monitoring & Utilities
+- `GET /health` – Liveness/health probe used by container orchestrators.
+- `GET /docs`, `GET /swagger-redirect`, `GET /redoc` – Interactive OpenAPI documentation UIs.
+- `POST /echo/` – Returns the posted payload (integration testing helper).
+- `GET /redis/?key=` – Fetch a value from Redis using the configured diagnostic connection.
+- `PUT /redis/` – Upsert a key/value pair in Redis via the diagnostic endpoint.
+- `POST /rabbit/` – Publish a plaintext message to a RabbitMQ exchange (diagnostic hook).
+
+### Authentication (`/auth`)
+- `POST /auth/register` – Register a user and seed their RBAC membership.
+- `POST /auth/login` – Issue a legacy JWT access token for username/password pairs.
+- `GET /auth/sso/google/login` – Initiate Google SSO via Casdoor (returns login URL & state).
+- `POST /auth/sso/google/callback` – Finalize the legacy Google SSO flow and mint a JWT.
+
+### Versioned Authentication (`/v1/auth`)
+- `POST /v1/auth/login` – Authenticate + create a session (records IP/user-agent metadata).
+- `POST /v1/auth/logout` – Revoke the caller’s active session (`get_current_principal`).
+- `POST /v1/auth/refresh` – Exchange a refresh token for a new access token pair.
+- `POST /v1/auth/password/forgot` – Generate a password reset token for the supplied email.
+- `POST /v1/auth/password/reset` – Complete password reset using the issued token.
+- `GET /v1/auth/me` – Return the authenticated user profile.
+- `GET /v1/auth/providers` – List enabled SSO providers (currently Google).
+- `GET /v1/auth/sso/callback` – Exchange the Casdoor auth code and issue session tokens.
+- `POST /v1/auth/sso/link` – Attach a Google SSO identity to the current user.
+- `DELETE /v1/auth/sso/link` – Remove the linked Google SSO identity for the current user.
+
+### Tenant Bootstrap
+- `POST /v1/bootstrap/organization` – Provision the first organization + admin (shared secret protected).
+
+### Billing
+- `GET /v1/billing/plans` – List all billing plans (`billing.plan.read`).
+- `POST /v1/billing/plans` – Create a billing plan (`billing.plan.write`).
+- `PATCH /v1/billing/plans/{plan_id}` – Update billing plan attributes (`billing.plan.write`).
+- `GET /v1/orgs/{organization_id}/subscription` – Inspect an organization’s subscription (`billing.subscription.read`).
+- `POST /v1/orgs/{organization_id}/subscription` – Create a subscription for an organization (`billing.subscription.write`).
+- `PATCH /v1/orgs/{organization_id}/subscription` – Update subscription dates/details (`billing.subscription.write`).
+- `GET /v1/orgs/{organization_id}/invoices` – List invoices for an organization (`billing.invoice.read`).
+- `GET /v1/invoices/{invoice_id}` – Fetch a specific invoice (`billing.invoice.read`).
+- `PATCH /v1/invoices/{invoice_id}` – Update invoice metadata (`billing.invoice.write`).
+
+### Support Tickets
+- `POST /v1/support/tickets` – Create a support ticket for the current user (`support.ticket.create`).
+- `GET /v1/support/tickets` – List tickets scoped to the caller’s organization (`support.ticket.read`).
+- `GET /v1/support/tickets/{ticket_id}` – Retrieve a ticket + requester details (`support.ticket.read`).
+- `PATCH /v1/support/tickets/{ticket_id}` – Update ticket status/fields (`support.ticket.update`).
+- `POST /v1/support/tickets/{ticket_id}/comments` – Add an internal/external comment (`support.comment`).
+- `GET /v1/support/tickets/{ticket_id}/comments` – List comments on a ticket (`support.ticket.read`).
+
+### Organizations
+- `POST /v1/orgs` – Create an organization (`org.create`).
+- `GET /v1/orgs` – Enumerate organizations (`org.read`).
+- `GET /v1/orgs/{organization_id}` – Fetch organization metadata (`org.read`).
+- `PATCH /v1/orgs/{organization_id}` – Update organization name/licensing (`org.update`).
+- `DELETE /v1/orgs/{organization_id}` – Deactivate an organization (`org.delete`).
+- `POST /v1/orgs/{organization_id}/admins` – Create an admin user + role assignment (`user.invite`, `role.assign`).
+- `GET /v1/orgs/{organization_id}/settings` – Fetch document-store backed settings (`settings.read`).
+- `PUT /v1/orgs/{organization_id}/settings` – Upsert organization settings (`settings.update`).
+- `GET /v1/orgs/{organization_id}/privacy` – Fetch privacy preferences (`privacy.read`).
+- `PUT /v1/orgs/{organization_id}/privacy` – Upsert privacy preferences (`privacy.update`).
+
+### Users
+- `POST /v1/orgs/{organization_id}/users` – Invite a user into an organization (`user.invite`).
+- `GET /v1/orgs/{organization_id}/users` – List organization users with optional status filter (`user.read`).
+- `GET /v1/users/{user_id}` – Retrieve a single user (`user.read`).
+- `PATCH /v1/users/{user_id}` – Update profile fields/role (`user.update`).
+- `DELETE /v1/users/{user_id}` – Deactivate a user (`user.delete`).
+- `GET /v1/users/{user_id}/contact` – Retrieve contact details (`user.read`).
+- `PATCH /v1/users/{user_id}/contact` – Upsert contact details (`user.update`).
+
+### RBAC
+- `POST /rbac/check` – Evaluate a permission for a user/org tuple.
+- `GET /rbac/users/{user_id}/permissions` – List effective permissions for a user within an organization.
+- `GET /v1/rbac/roles` – List roles in the caller’s organization (`role.read`).
+- `POST /v1/rbac/roles` – Create a new role (`role.create`).
+- `PATCH /v1/rbac/roles/{role_id}` – Update role metadata (`role.update`).
+- `DELETE /v1/rbac/roles/{role_id}` – Remove a role (`role.delete`).
+- `GET /v1/rbac/permissions` – Enumerate global permissions (`perm.read`).
+- `POST /v1/rbac/permissions` – Create a permission (`perm.create`).
+- `POST /v1/rbac/roles/{role_id}/permissions` – Attach a permission to a role (`role.perm.assign`).
+- `DELETE /v1/rbac/roles/{role_id}/permissions/{permission_id}` – Detach a permission (`role.perm.revoke`).
+- `POST /v1/rbac/users/{user_id}/roles` – Assign a role to a user (`role.assign`).
+- `DELETE /v1/rbac/users/{user_id}/roles/{role_id}` – Revoke a role from a user (`role.revoke`).
+- `GET /v1/rbac/effective/{user_id}` – Compute a user’s effective permissions (`role.read`).
+
+### Feedback & Search
+- `POST /v1/feedback` – Submit feedback (document store backed) (`feedback.create`).
+- `GET /v1/feedback` – List feedback for an organization (`feedback.read`).
+- `PATCH /v1/feedback/{feedback_id}` – Update feedback status/content (`feedback.update`).
+- `GET /v1/search` – Perform an organization-scoped search across indexed documents (`search.read`).
+
+### Security & Activity
+- `GET /v1/security/alerts` – List security alerts (`security.alert.read`).
+- `PATCH /v1/security/alerts/{alert_id}` – Update alert status/metadata (`security.alert.update`).
+- `GET /v1/activity/logins` – Audit login attempts (`activity.login.read`).
+- `GET /v1/activity/users` – Audit user activity entries (`activity.user.read`).
+- `GET /v1/audit/logs` – Retrieve change audit log entries (`audit.log.read`).
+
+### Settings
+- `GET /settings/organization/{organization_id}` – Retrieve organization settings from Mongo.
+- `GET /settings/organization/{organization_id}/privacy` – Retrieve privacy settings from Mongo.
+- `GET /settings/organization/{organization_id}/feedback` – Retrieve aggregated feedback data.
+
 ## Quick start with Docker Compose
 
 1. Copy the provided `.env` and adjust secrets as needed (JWT, Casdoor credentials, etc.).
