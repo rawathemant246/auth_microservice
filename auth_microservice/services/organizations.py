@@ -54,6 +54,11 @@ ADMIN_PERMISSION_NAMES: list[str] = [
     "feedback.read",
     "feedback.update",
     "search.read",
+    "security.alert.read",
+    "security.alert.update",
+    "audit.log.read",
+    "activity.login.read",
+    "activity.user.read",
 ]
 
 PERMISSION_DESCRIPTIONS: dict[str, str] = {
@@ -93,6 +98,11 @@ PERMISSION_DESCRIPTIONS: dict[str, str] = {
     "feedback.read": "Read feedback entries",
     "feedback.update": "Update feedback entries",
     "search.read": "Perform cross-resource search",
+    "security.alert.read": "View security alerts",
+    "security.alert.update": "Update security alert status",
+    "audit.log.read": "View audit log entries",
+    "activity.login.read": "Review login activity",
+    "activity.user.read": "Review user activity",
 }
 
 
