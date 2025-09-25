@@ -342,12 +342,9 @@ def fastapi_app(
     :return: fastapi app with mocked dependencies.
     """
     application = get_app()
-    session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
-
     async def _get_db_session_override() -> AsyncGenerator[AsyncSession, None]:
-        async with session_factory() as session:
-            async with session.begin():
-                yield session
+        async with dbsession.begin_nested():
+            yield dbsession
 
     application.dependency_overrides[get_db_session] = _get_db_session_override
     application.dependency_overrides[get_redis_pool] = lambda: fake_redis_pool

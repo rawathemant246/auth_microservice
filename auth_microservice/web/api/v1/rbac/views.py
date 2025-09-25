@@ -298,7 +298,8 @@ async def get_effective_permissions(
     if user is None or user.organization_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user_not_found")
 
-    permissions = await _get_rbac_service(request).get_user_permissions(
+    service = RbacAdminService(session)
+    permissions = await service.get_effective_permissions(
         user_id=user.user_id,
         organization_id=user.organization_id,
     )

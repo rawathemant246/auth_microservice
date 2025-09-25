@@ -75,6 +75,7 @@ class UserService:
             await self.ensure_role_in_organization(user.organization_id, user.role_id)
 
         await self._session.flush()
+        await self._session.refresh(user)
         return user
 
     async def deactivate_user(self, user: User) -> User:
@@ -85,6 +86,7 @@ class UserService:
         )
         self._session.add(archive_entry)
         await self._session.flush()
+        await self._session.refresh(user)
         return user
 
     async def get_contact_information(self, user_id: int) -> ContactInformation | None:
@@ -119,6 +121,7 @@ class UserService:
                 setattr(contact, field, value)
 
         await self._session.flush()
+        await self._session.refresh(contact)
         return contact
 
     async def ensure_role_in_organization(self, organization_id: int, role_id: int) -> None:

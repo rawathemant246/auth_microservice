@@ -59,6 +59,7 @@ class RbacAdminService:
         )
         self._session.add(role)
         await self._session.flush()
+        await self._session.refresh(role)
         return role
 
     async def update_role(
@@ -76,6 +77,7 @@ class RbacAdminService:
         if role_description is not None:
             role.role_description = role_description
         await self._session.flush()
+        await self._session.refresh(role)
         return role
 
     async def delete_role(self, role: Role) -> None:
@@ -91,6 +93,20 @@ class RbacAdminService:
     async def list_permissions(self) -> list[Permission]:
         result = await self._session.execute(select(Permission).order_by(Permission.permission_id))
         return list(result.scalars())
+
+    async def get_effective_permissions(self, user_id: int, organization_id: int) -> list[str]:
+        stmt = (
+            select(Permission.permission_name)
+            .join(RolePermission, Permission.permission_id == RolePermission.permission_id)
+            .join(Role, Role.role_id == RolePermission.role_id)
+            .join(User, User.role_id == Role.role_id)
+            .where(User.user_id == user_id)
+            .where(Role.organization_id == organization_id)
+            .where(RolePermission.organization_id == organization_id)
+        )
+        result = await self._session.execute(stmt)
+        permissions = {row[0] for row in result.all()}
+        return sorted(permissions)
 
     async def create_permission(
         self,
@@ -110,6 +126,7 @@ class RbacAdminService:
         )
         self._session.add(permission)
         await self._session.flush()
+        await self._session.refresh(permission)
         return permission
 
     async def assign_permission_to_role(
@@ -168,6 +185,7 @@ class RbacAdminService:
             raise ValueError("role_not_in_organization")
         user.role_id = role.role_id
         await self._session.flush()
+        await self._session.refresh(user)
         return user
 
     async def revoke_role_from_user(
@@ -180,4 +198,5 @@ class RbacAdminService:
             raise ValueError("role_not_assigned")
         user.role_id = None
         await self._session.flush()
+        await self._session.refresh(user)
         return user

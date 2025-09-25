@@ -40,6 +40,7 @@ class SupportService:
         )
         self._session.add(ticket)
         await self._session.flush()
+        await self._session.refresh(ticket)
         return ticket
 
     async def list_tickets(
@@ -97,6 +98,7 @@ class SupportService:
         if "status" in updates and updates["status"] is not None:
             ticket.status = updates["status"]
         await self._session.flush()
+        await self._session.refresh(ticket)
         return ticket
 
     async def create_comment(
@@ -113,6 +115,7 @@ class SupportService:
         )
         self._session.add(comment_entry)
         await self._session.flush()
+        await self._session.refresh(comment_entry)
         return comment_entry
 
     async def list_comments(

@@ -124,6 +124,7 @@ class OrganizationService:
         await self._session.flush()
 
         admin_role = await self.ensure_admin_role(organization)
+        await self._session.refresh(organization)
         return organization, admin_role
 
     async def ensure_admin_role(self, organization: Organization) -> Role:
@@ -143,6 +144,7 @@ class OrganizationService:
             )
             self._session.add(role)
             await self._session.flush()
+            await self._session.refresh(role)
 
         permissions = await self._ensure_permissions(ADMIN_PERMISSION_NAMES)
 
@@ -190,6 +192,7 @@ class OrganizationService:
             organization.license_status = updates["license_status"]
 
         await self._session.flush()
+        await self._session.refresh(organization)
         return organization
 
     async def deactivate_organization(self, organization: Organization) -> Organization:
@@ -197,6 +200,7 @@ class OrganizationService:
 
         organization.license_status = LicenseStatusEnum.SUSPENDED
         await self._session.flush()
+        await self._session.refresh(organization)
         return organization
 
     async def list_organizations(self) -> list[Organization]:

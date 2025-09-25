@@ -70,6 +70,7 @@ class AuthService:
         self._session.add(contact)
         await self._session.flush()
         logger.info("Registered new user id=%s", user.user_id)
+        await self._session.refresh(user)
         return user
 
     async def authenticate_user(

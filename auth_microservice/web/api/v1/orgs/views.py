@@ -42,6 +42,11 @@ def _get_document_store(request: Request) -> DocumentStoreService:
     return request.app.state.document_store
 
 
+def _ensure_same_organization(principal: AuthenticatedPrincipal, organization_id: int) -> None:
+    if principal.organization_id != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+
+
 @router.post("", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     payload: OrganizationCreateRequest,

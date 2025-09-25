@@ -67,6 +67,7 @@ class BillingService:
         )
         self._session.add(plan)
         await self._session.flush()
+        await self._session.refresh(plan)
         return plan
 
     async def update_plan(
@@ -96,6 +97,7 @@ class BillingService:
             plan.support_level = updates["support_level"]
 
         await self._session.flush()
+        await self._session.refresh(plan)
         return plan
 
     # Subscriptions -----------------------------------------------------------------
@@ -139,6 +141,7 @@ class BillingService:
             end_date=subscription_end,
             status=history_status,
         )
+        await self._session.refresh(subscription)
         return subscription
 
     async def update_subscription(
@@ -167,6 +170,7 @@ class BillingService:
                 status=history_data["status"],
             )
 
+        await self._session.refresh(subscription)
         return subscription
 
     async def _record_subscription_history(
@@ -234,4 +238,5 @@ class BillingService:
             invoice.billing_cycle = updates["billing_cycle"]
 
         await self._session.flush()
+        await self._session.refresh(invoice)
         return invoice
