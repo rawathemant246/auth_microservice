@@ -1,0 +1,6 @@
+"""Bootstrap API package."""
+
+from auth_microservice.web.api.v1.bootstrap import views
+
+__all__ = ["views"]
+

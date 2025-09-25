@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.core.security import decode_token
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.db.models.oltp import User, UserLogin
+from auth_microservice.db.models.oltp import User
 from auth_microservice.services.auth.service import AuthService
 
 
@@ -20,8 +20,12 @@ from auth_microservice.services.auth.service import AuthService
 class AuthenticatedPrincipal:
     """Authenticated user context derived from a bearer token."""
 
-    user: User
-    session: UserLogin
+    user_id: int
+    session_id: int
+    organization_id: int
+    role_id: int | None
+    status: str
+    username: str
     token_payload: dict[str, Any]
     raw_token: str
 
@@ -70,7 +74,16 @@ async def get_current_principal(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user_not_found")
 
-    return AuthenticatedPrincipal(user=user, session=session_record, token_payload=payload, raw_token=token)
+    return AuthenticatedPrincipal(
+        user_id=user.user_id,
+        session_id=session_record.login_id,
+        organization_id=user.organization_id,
+        role_id=user.role_id,
+        status=user.status.value if hasattr(user.status, "value") else str(user.status),
+        username=user.username,
+        token_payload=payload,
+        raw_token=token,
+    )
 
 
 def require_permission(permission_name: str):
@@ -82,12 +95,33 @@ def require_permission(permission_name: str):
     ) -> AuthenticatedPrincipal:
         rbac_service = request.app.state.rbac_service
         allowed = await rbac_service.enforce(
-            user_id=principal.user.user_id,
+            user_id=principal.user_id,
             permission_name=permission_name,
-            organization_id=principal.user.organization_id,
+            organization_id=principal.organization_id,
         )
         if not allowed:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
+        return principal
+
+    return _dependency
+
+
+def require_permissions(*permission_names: str):
+    """Ensure the principal has every listed permission within their organization."""
+
+    async def _dependency(
+        request: Request,
+        principal: AuthenticatedPrincipal = Depends(get_current_principal),
+    ) -> AuthenticatedPrincipal:
+        rbac_service = request.app.state.rbac_service
+        for permission_name in permission_names:
+            allowed = await rbac_service.enforce(
+                user_id=principal.user_id,
+                permission_name=permission_name,
+                organization_id=principal.organization_id,
+            )
+            if not allowed:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
         return principal
 
     return _dependency

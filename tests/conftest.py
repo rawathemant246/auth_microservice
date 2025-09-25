@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, AsyncGenerator
+from datetime import datetime
+from typing import Any, AsyncGenerator, Optional
 from unittest.mock import Mock
 
 import pytest
@@ -25,6 +26,146 @@ from auth_microservice.services.rabbit.lifespan import init_rabbit, shutdown_rab
 from auth_microservice.services.redis.dependency import get_redis_pool
 from auth_microservice.settings import settings
 from auth_microservice.web.application import get_app
+
+
+class InMemoryDocumentStore:
+    """Simple in-memory substitute for the Mongo-backed document store."""
+
+    def __init__(self) -> None:
+        self._org_settings: dict[int, dict[str, Any]] = {}
+        self._privacy_settings: dict[int, dict[str, Any]] = {}
+        self._feedback: dict[str, dict[str, Any]] = {}
+
+    async def get_organization_settings(self, organization_id: int) -> dict[str, Any] | None:
+        settings = self._org_settings.get(organization_id)
+        return None if settings is None else dict(settings)
+
+    async def upsert_organization_settings(
+        self,
+        organization_id: int,
+        settings: dict[str, Any],
+    ) -> dict[str, Any]:
+        self._org_settings[organization_id] = dict(settings)
+        return dict(settings)
+
+    async def get_privacy_settings(self, organization_id: int) -> dict[str, Any] | None:
+        settings = self._privacy_settings.get(organization_id)
+        return None if settings is None else dict(settings)
+
+    async def upsert_privacy_settings(
+        self,
+        organization_id: int,
+        settings: dict[str, Any],
+    ) -> dict[str, Any]:
+        self._privacy_settings[organization_id] = dict(settings)
+        return dict(settings)
+
+    async def create_feedback(
+        self,
+        *,
+        organization_id: int,
+        user_id: int,
+        content: str,
+        category: str,
+        status: str,
+    ) -> dict[str, Any]:
+        feedback_id = uuid.uuid4().hex
+        now = datetime.utcnow().isoformat()
+        document = {
+            "feedback_id": feedback_id,
+            "organization_id": organization_id,
+            "user_id": user_id,
+            "content": content,
+            "category": category,
+            "status": status,
+            "created_at": now,
+            "updated_at": now,
+        }
+        self._feedback[feedback_id] = document
+        return dict(document)
+
+    async def list_feedback(
+        self,
+        *,
+        organization_id: int,
+        user_id: Optional[int] = None,
+        status: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        results: list[dict[str, Any]] = []
+        for document in self._feedback.values():
+            if document["organization_id"] != organization_id:
+                continue
+            if user_id is not None and document["user_id"] != user_id:
+                continue
+            if status is not None and document["status"] != status:
+                continue
+            results.append(dict(document))
+        return results
+
+    async def update_feedback(
+        self,
+        feedback_id: str,
+        updates: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        document = self._feedback.get(feedback_id)
+        if document is None:
+            return None
+        document.update(updates)
+        document["updated_at"] = datetime.utcnow().isoformat()
+        return dict(document)
+
+    async def search_feedback(
+        self,
+        *,
+        organization_id: int,
+        query: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        lowered = query.lower()
+        results: list[dict[str, Any]] = []
+        for document in self._feedback.values():
+            if document["organization_id"] != organization_id:
+                continue
+            text = " ".join(
+                [
+                    str(document.get("content", "")),
+                    str(document.get("category", "")),
+                    str(document.get("status", "")),
+                ]
+            ).lower()
+            if lowered in text:
+                results.append(dict(document))
+            if len(results) >= limit:
+                break
+        return results
+
+    async def get_user_feedback(
+        self,
+        organization_id: int,
+        user_id: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        return await self.list_feedback(
+            organization_id=organization_id,
+            user_id=user_id,
+        )
+
+
+class StubRbacService:
+    async def invalidate_cache(self) -> None:  # noqa: D401 - simple stub
+        return None
+
+    async def enforce(
+        self,
+        *,
+        user_id: int,
+        permission_name: str,
+        organization_id: int,
+        action: str = "access",
+    ) -> bool:
+        return True
+
+    async def get_user_permissions(self, user_id: int, organization_id: int) -> list[str]:  # noqa: ARG002
+        return []
 
 
 @pytest.fixture(scope="session")
@@ -193,6 +334,7 @@ def fastapi_app(
     dbsession: AsyncSession,
     fake_redis_pool: ConnectionPool,
     test_rmq_pool: Pool[Channel],
+    _engine: AsyncEngine,
 ) -> FastAPI:
     """
     Fixture for creating FastAPI app.
@@ -200,9 +342,18 @@ def fastapi_app(
     :return: fastapi app with mocked dependencies.
     """
     application = get_app()
-    application.dependency_overrides[get_db_session] = lambda: dbsession
+    session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False)
+
+    async def _get_db_session_override() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            async with session.begin():
+                yield session
+
+    application.dependency_overrides[get_db_session] = _get_db_session_override
     application.dependency_overrides[get_redis_pool] = lambda: fake_redis_pool
     application.dependency_overrides[get_rmq_channel_pool] = lambda: test_rmq_pool
+    application.state.document_store = InMemoryDocumentStore()
+    application.state.rbac_service = StubRbacService()
     return application
 
 
