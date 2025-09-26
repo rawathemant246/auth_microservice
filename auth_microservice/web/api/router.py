@@ -1,6 +1,18 @@
 from fastapi.routing import APIRouter
 
-from auth_microservice.web.api import auth, docs, echo, monitoring, rabbit, rbac, redis, settings
+from auth_microservice.web.api import (
+    admin,
+    auth,
+    docs,
+    echo,
+    internal,
+    metrics,
+    monitoring,
+    rabbit,
+    rbac,
+    redis,
+    settings,
+)
 from auth_microservice.web.api.v1.activity import views as v1_activity_views
 from auth_microservice.web.api.v1.audit import views as v1_audit_views
 from auth_microservice.web.api.v1.auth import views as v1_auth_views
@@ -32,6 +44,9 @@ api_router.include_router(v1_audit_views.audit_router)
 api_router.include_router(v1_activity_views.activity_router)
 api_router.include_router(rbac.views.router)
 api_router.include_router(settings.views.router)
+api_router.include_router(metrics.router)
+api_router.include_router(admin.router)
+api_router.include_router(internal.router)
 api_router.include_router(docs.router)
 api_router.include_router(echo.router, prefix="/echo", tags=["echo"])
 api_router.include_router(redis.router, prefix="/redis", tags=["redis"])

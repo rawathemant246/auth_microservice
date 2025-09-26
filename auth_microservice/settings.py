@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     log_level: LogLevel = LogLevel.INFO
     users_secret: str = os.getenv("USERS_SECRET", "")
     bootstrap_secret: str = os.getenv("BOOTSTRAP_SECRET", "")
+    metrics_ingest_secret: Optional[str] = os.getenv("METRICS_INGEST_SECRET")
+    internal_api_secret: Optional[str] = os.getenv("INTERNAL_API_SECRET")
     # Variables for the database
     db_host: str = "localhost"
     db_port: int = 5432

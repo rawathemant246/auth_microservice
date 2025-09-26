@@ -20,6 +20,7 @@ from auth_microservice.db.models.oltp import (
     User,
     UserLogin,
     UserLoginActivity,
+    UserStatusEnum,
 )
 from auth_microservice.settings import settings
 
@@ -92,6 +93,8 @@ class AuthService:
         user, email = row
         if not verify_password(password, user.password):
             raise ValueError("invalid_credentials")
+        if user.status != UserStatusEnum.ACTIVE:
+            raise ValueError("account_inactive")
 
         user.last_login = datetime.now(timezone.utc)
         activity = UserLoginActivity(

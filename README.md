@@ -19,12 +19,17 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 ## REST API
 
 ### Monitoring & Utilities
-- `GET /health` – Liveness/health probe used by container orchestrators.
+- `GET /health` – Legacy health probe (same payload as `/healthz`).
+- `GET /healthz` – Liveness probe.
+- `GET /readyz` – Readiness probe (verifies database connectivity).
+- `GET /version` – Report the running build’s semantic version.
 - `GET /docs`, `GET /swagger-redirect`, `GET /redoc` – Interactive OpenAPI documentation UIs.
 - `POST /echo/` – Returns the posted payload (integration testing helper).
-- `GET /redis/?key=` – Fetch a value from Redis using the configured diagnostic connection.
-- `PUT /redis/` – Upsert a key/value pair in Redis via the diagnostic endpoint.
-- `POST /rabbit/` – Publish a plaintext message to a RabbitMQ exchange (diagnostic hook).
+- `GET /redis/?key=` – Fetch a value from Redis using the diagnostic connection (dev/test only).
+- `PUT /redis/` – Upsert a key/value pair in Redis via the diagnostic endpoint (dev/test only).
+- `POST /rabbit/` – Publish a plaintext message to a RabbitMQ exchange (dev/test only).
+- `POST /internal/reindex` – Rebuild search/FTS indexes (`X-Internal-Secret` required).
+- `POST /internal/cache/invalidate` – Flush RBAC caches (`X-Internal-Secret` required).
 
 ### Authentication (`/auth`)
 - `POST /auth/register` – Register a user and seed their RBAC membership.
@@ -165,8 +170,20 @@ Grafana automatically discovers the Prometheus datasource configured in `deploy/
 
 ### Metrics endpoint
 
-- FastAPI exposes metrics at `http://localhost:8000/metrics` (the same endpoint Prometheus scrapes by default).
+- Prometheus scrapes metrics from `GET /metrics/prometheus` (already configured in the bundled Prometheus).
+- Metrics ingestion endpoints (all require the shared `X-Internal-Secret` header or `METRICS_INGEST_SECRET`):
+  - `POST /metrics/system-health` → writes to `system_health_logs`.
+  - `POST /metrics/system-alerts` → writes to `system_alerts`.
+  - `POST /metrics/usage` → writes to `usage_metrics`.
 - Update `deploy/prometheus/prometheus.yml` if you change the API port or add additional scrape targets.
+
+### Admin panel APIs
+
+Administrative helpers exposed under `/admin` (all require `X-Internal-Secret`):
+
+- `GET /admin/orgs/{orgId}/overview` – aggregate counts, latest invoices, and recent login buckets.
+- `GET /admin/rbac/snapshot/{orgId}` – roles, permissions, and user assignments snapshot.
+- `POST /admin/bootstrap/seed` – rebuild default roles/permissions for every org (disabled in production).
 
 ### Prebuilt dashboards
 
@@ -195,6 +212,8 @@ All configuration is driven through the `.env` file (autoloaded by docker-compos
 | `AUTH_MICROSERVICE_JWT_SECRET_KEY` / `USERS_SECRET` | Secrets for issuing/validating access tokens. Change for production. |
 | `AUTH_MICROSERVICE_CASDOOR_*` | Casdoor endpoint and client credentials for Google SSO. |
 | `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` | Override Grafana's admin credentials (defaults to `admin`/`admin`). |
+| `AUTH_MICROSERVICE_METRICS_INGEST_SECRET` | Shared secret required for `/api/metrics/*` POST ingestion endpoints. |
+| `AUTH_MICROSERVICE_INTERNAL_API_SECRET` | Shared secret required for `/api/admin/*` and `/internal/*` maintenance endpoints. |
 
 Update these values before deploying to any shared environment. Casdoor itself is not part of this compose stack—you must supply credentials for your hosted Casdoor instance.
 

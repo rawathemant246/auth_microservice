@@ -139,12 +139,19 @@ async def create_org_admin(
     organization_id: int,
     payload: AdminUserCreateRequest,
     request: Request,
-    _: AuthenticatedPrincipal = Depends(require_permissions("user.invite", "role.assign")),
+    principal: AuthenticatedPrincipal = Depends(require_permissions("user.invite", "role.assign")),
     session: AsyncSession = Depends(get_db_session),
 ) -> AdminUserResponse:
     organization = await session.get(Organization, organization_id)
     if organization is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="organization_not_found")
+
+    if (
+        organization.user_id is not None
+        and organization.user_id != principal.user_id
+        and principal.organization_id != organization_id
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     service = OrganizationService(session)
     admin_role = await service.ensure_admin_role(organization)

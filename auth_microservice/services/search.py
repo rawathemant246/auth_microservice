@@ -119,3 +119,16 @@ class SearchService:
                 }
             )
         return items
+
+    async def rebuild_indexes(
+        self,
+        *,
+        document_store: DocumentStoreService,
+    ) -> dict[str, int]:
+        """Placeholder hook to trigger downstream index rebuilds."""
+
+        # At present the document store does not expose specialised index rebuild
+        # operations. Returning a static payload keeps the endpoint idempotent
+        # while providing a future extension point.
+        _ = document_store
+        return {"documents_indexed": 0}

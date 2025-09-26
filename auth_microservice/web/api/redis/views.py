@@ -1,16 +1,24 @@
-from fastapi import APIRouter
-from fastapi.param_functions import Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import ConnectionPool, Redis
 
 from auth_microservice.services.redis.dependency import get_redis_pool
 from auth_microservice.web.api.redis.schema import RedisValueDTO
+from auth_microservice.settings import settings
 
 router = APIRouter()
+
+
+def _ensure_internal_access() -> None:
+    """Block access in non-development environments."""
+
+    if settings.environment not in {"dev", "pytest"}:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")
 
 
 @router.get("/", response_model=RedisValueDTO)
 async def get_redis_value(
     key: str,
+    _: None = Depends(_ensure_internal_access),
     redis_pool: ConnectionPool = Depends(get_redis_pool),
 ) -> RedisValueDTO:
     """
@@ -31,6 +39,7 @@ async def get_redis_value(
 @router.put("/")
 async def set_redis_value(
     redis_value: RedisValueDTO,
+    _: None = Depends(_ensure_internal_access),
     redis_pool: ConnectionPool = Depends(get_redis_pool),
 ) -> None:
     """

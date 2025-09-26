@@ -189,8 +189,9 @@ async def forgot_password(
     session: AsyncSession = Depends(get_db_session),
 ) -> ForgotPasswordResponse:
     auth_service = AuthService(session)
-    reset_token = await auth_service.create_password_reset_token(payload.email)
-    return ForgotPasswordResponse(status="ok", reset_token=reset_token)
+    await auth_service.create_password_reset_token(payload.email)
+    # Never leak whether the user exists nor expose the raw token.
+    return ForgotPasswordResponse(status="ok", reset_token=None)
 
 
 @router.post("/password/reset", response_model=ResetPasswordResponse)
