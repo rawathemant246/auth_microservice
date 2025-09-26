@@ -12,6 +12,7 @@ from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import ContactInformation, Organization, User, UserStatusEnum
 from auth_microservice.services.auth.service import AuthService
 from auth_microservice.services.users import UserService
+from auth_microservice.services.events import publish_audit_event
 from auth_microservice.web.api.dependencies import (
     AuthenticatedPrincipal,
     require_permission,
@@ -122,6 +123,15 @@ async def create_user_in_organization(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
 
     await request.app.state.rbac_service.invalidate_cache()
+    await publish_audit_event(
+        request,
+        "user.created",
+        {
+            "actor_id": principal.user_id,
+            "organization_id": organization_id,
+            "user_id": user.user_id,
+        },
+    )
 
     contact = await user_service.get_contact_information(user.user_id)
     return _serialize_user(user, contact)
@@ -191,6 +201,16 @@ async def update_user(
         raise
 
     await request.app.state.rbac_service.invalidate_cache()
+    await publish_audit_event(
+        request,
+        "user.updated",
+        {
+            "actor_id": principal.user_id,
+            "user_id": user.user_id,
+            "organization_id": user.organization_id,
+            "fields": sorted(updates.keys()),
+        },
+    )
     return _serialize_user(user, contact)
 
 
@@ -208,6 +228,15 @@ async def deactivate_user(
     user = await user_service.deactivate_user(user)
 
     await request.app.state.rbac_service.invalidate_cache()
+    await publish_audit_event(
+        request,
+        "user.deactivated",
+        {
+            "actor_id": principal.user_id,
+            "user_id": user.user_id,
+            "organization_id": user.organization_id,
+        },
+    )
     return _serialize_user(user, contact)
 
 

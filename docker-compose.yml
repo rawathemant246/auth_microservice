@@ -96,7 +96,7 @@ services:
       retries: 50
 
   rmq:
-    image: rabbitmq:3.9.16-alpine
+    image: rabbitmq:3.9.16-management-alpine
     hostname: "auth_microservice-rmq"
     restart: always
     environment:
@@ -108,6 +108,30 @@ services:
       interval: 3s
       timeout: 3s
       retries: 50
+
+  rabbitmq-exporter:
+    image: prometheuscommunity/rabbitmq-exporter:v1.0.0
+    environment:
+      RABBIT_URL: "http://auth_microservice-rmq:15672"
+      RABBIT_USER: "guest"
+      RABBIT_PASSWORD: "guest"
+    ports:
+      - "9419:9419"
+    depends_on:
+      rmq:
+        condition: service_started
+    restart: always
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.61.0
+    command:
+      - "--redis.addr=redis://auth_microservice-redis:6379"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
 
   mongo:
     image: mongo:6.0

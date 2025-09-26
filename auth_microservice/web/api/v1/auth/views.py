@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
@@ -12,6 +13,11 @@ from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import ContactInformation, User, SsoProviderName
 from auth_microservice.services.auth.service import AuthService
 from auth_microservice.services.sso import CasdoorService
+from auth_microservice.services.events import (
+    publish_email_event,
+    publish_security_event,
+)
+from auth_microservice.services.redis.dependency import get_redis_pool
 from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, get_current_principal
 from auth_microservice.web.api.v1.auth.schemas import (
     ForgotPasswordRequest,
@@ -32,7 +38,8 @@ from auth_microservice.web.api.v1.auth.schemas import (
     TokenPair,
     UserProfileResponse,
 )
-from auth_microservice.db.models.oltp import SsoProviderName
+from redis.asyncio import Redis
+from redis.asyncio.connection import ConnectionPool
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -133,11 +140,23 @@ async def login(
     )
     profile = await _build_user_profile(session, user, email)
     tokens = _build_token_pair(session_data)
+    session_record = session_data["session"]
+    await publish_security_event(
+        request,
+        "auth.login",
+        {
+            "user_id": user.user_id,
+            "organization_id": user.organization_id,
+            "session_id": session_record.login_id,
+            "ip": _get_client_ip(request),
+        },
+    )
     return LoginResponse(tokens=tokens, user=profile)
 
 
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(
+    request: Request,
     principal: AuthenticatedPrincipal = Depends(get_current_principal),
     session: AsyncSession = Depends(get_db_session),
 ) -> LogoutResponse:
@@ -146,6 +165,15 @@ async def logout(
     if session_record is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="session_not_found")
     await auth_service.revoke_session(session_record)
+    await publish_security_event(
+        request,
+        "auth.logout",
+        {
+            "user_id": principal.user_id,
+            "organization_id": principal.organization_id,
+            "session_id": session_record.login_id,
+        },
+    )
     return LogoutResponse()
 
 
@@ -186,10 +214,19 @@ async def refresh_token(
 @router.post("/password/forgot", response_model=ForgotPasswordResponse)
 async def forgot_password(
     payload: ForgotPasswordRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
+    redis_pool: ConnectionPool = Depends(get_redis_pool),
 ) -> ForgotPasswordResponse:
     auth_service = AuthService(session)
-    await auth_service.create_password_reset_token(payload.email)
+    redis = Redis(connection_pool=redis_pool)
+    token = await auth_service.create_password_reset_token(payload.email, redis=redis)
+    if token:
+        await publish_email_event(
+            request,
+            "password.reset",
+            {"email": payload.email, "token": token},
+        )
     # Never leak whether the user exists nor expose the raw token.
     return ForgotPasswordResponse(status="ok", reset_token=None)
 
@@ -197,13 +234,21 @@ async def forgot_password(
 @router.post("/password/reset", response_model=ResetPasswordResponse)
 async def reset_password(
     payload: ResetPasswordRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
+    redis_pool: ConnectionPool = Depends(get_redis_pool),
 ) -> ResetPasswordResponse:
     auth_service = AuthService(session)
     try:
-        await auth_service.reset_password(payload.token, payload.new_password)
+        redis = Redis(connection_pool=redis_pool)
+        await auth_service.reset_password(payload.token, payload.new_password, redis=redis)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    await publish_security_event(
+        request,
+        "password.reset",
+        {"token_hash": hashlib.sha256(payload.token.encode()).hexdigest()},
+    )
     return ResetPasswordResponse(status="ok")
 
 

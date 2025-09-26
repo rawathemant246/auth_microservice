@@ -5,13 +5,14 @@ from __future__ import annotations
 import os
 import secrets
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, REGISTRY, generate_latest
 from prometheus_client import multiprocess
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.services.metrics import MetricsService
+from auth_microservice.services.events import publish_log_ingest
 from auth_microservice.settings import settings
 from auth_microservice.web.api.metrics.schemas import (
     SystemAlertIngestRequest,
@@ -65,11 +66,17 @@ def _current_registry() -> CollectorRegistry:
 )
 async def ingest_system_health(
     payload: SystemHealthIngestRequest,
+    request: Request,
     _: None = Depends(require_ingest_secret),
     session: AsyncSession = Depends(get_db_session),
 ) -> SystemHealthIngestResponse:
     service = MetricsService(session)
     entry = await service.record_system_health(payload.model_dump())
+    await publish_log_ingest(
+        request,
+        "metrics.system_health",
+        {"log_id": entry.log_id, "organization_id": entry.organization_id},
+    )
     return SystemHealthIngestResponse.model_validate(entry)
 
 
@@ -80,11 +87,17 @@ async def ingest_system_health(
 )
 async def ingest_system_alert(
     payload: SystemAlertIngestRequest,
+    request: Request,
     _: None = Depends(require_ingest_secret),
     session: AsyncSession = Depends(get_db_session),
 ) -> SystemAlertIngestResponse:
     service = MetricsService(session)
     entry = await service.record_system_alert(payload.model_dump())
+    await publish_log_ingest(
+        request,
+        "metrics.system_alert",
+        {"alert_id": entry.alert_id, "organization_id": entry.organization_id},
+    )
     return SystemAlertIngestResponse.model_validate(entry)
 
 
@@ -95,11 +108,17 @@ async def ingest_system_alert(
 )
 async def ingest_usage_metric(
     payload: UsageMetricIngestRequest,
+    request: Request,
     _: None = Depends(require_ingest_secret),
     session: AsyncSession = Depends(get_db_session),
 ) -> UsageMetricIngestResponse:
     service = MetricsService(session)
     entry = await service.record_usage_metric(payload.model_dump())
+    await publish_log_ingest(
+        request,
+        "metrics.usage",
+        {"metric_id": entry.metric_id, "organization_id": entry.school_id},
+    )
     return UsageMetricIngestResponse.model_validate(entry)
 
 

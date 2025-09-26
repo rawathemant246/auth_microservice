@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+import secrets
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.services.auth.service import AuthService
+from auth_microservice.services.bootstrap import PlatformBootstrapService
 from auth_microservice.services.organizations import OrganizationService
 from auth_microservice.settings import settings
 from auth_microservice.web.api.v1.bootstrap.schemas import (
@@ -17,19 +20,34 @@ from auth_microservice.web.api.v1.bootstrap.schemas import (
 
 router = APIRouter(prefix="/v1/bootstrap", tags=["bootstrap"])
 
+def _validate_bootstrap_secret(secret: str | None) -> None:
+    if not settings.bootstrap_secret:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="bootstrap_not_configured")
+    if secret is None or not secrets.compare_digest(secret, settings.bootstrap_secret):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="invalid_bootstrap_secret")
+
 
 @router.post("/organization", response_model=BootstrapOrganizationResponse, status_code=status.HTTP_201_CREATED)
 async def bootstrap_organization(
     payload: BootstrapOrganizationRequest,
     request: Request,
     session: AsyncSession = Depends(get_db_session),
+    x_bootstrap_secret: str | None = Header(default=None, alias="X-Bootstrap-Secret"),
 ) -> BootstrapOrganizationResponse:
     """Create the initial organization and administrator guarded by a shared secret."""
 
-    if not settings.bootstrap_secret:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="bootstrap_not_configured")
-    if payload.bootstrap_secret != settings.bootstrap_secret:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="invalid_bootstrap_secret")
+    _validate_bootstrap_secret(x_bootstrap_secret)
+
+    bootstrapper = PlatformBootstrapService(session)
+    if not await bootstrapper.organizations_exist():
+        result = await bootstrapper.bootstrap_superuser(payload.admin_user.model_dump())
+        await request.app.state.rbac_service.reload_policies()
+        return BootstrapOrganizationResponse(
+            organization_id=result.organization.organization_id,
+            organization_name=result.organization.organization_name,
+            admin_user_id=result.user.user_id,
+            admin_role_id=result.role.role_id,
+        )
 
     organization_service = OrganizationService(session)
     try:
@@ -77,4 +95,3 @@ async def bootstrap_organization(
         admin_user_id=admin_user.user_id,
         admin_role_id=admin_role.role_id,
     )
-

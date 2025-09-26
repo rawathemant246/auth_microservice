@@ -23,7 +23,6 @@ class BootstrapAdminUser(BaseModel):
 
 
 class BootstrapOrganizationRequest(BaseModel):
-    bootstrap_secret: str = Field(..., min_length=1)
     organization_name: str = Field(..., min_length=1, max_length=100)
     license_status: Optional[LicenseStatusEnum] = None
     admin_user: BootstrapAdminUser

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import AlertStatusEnum, User
 from auth_microservice.services.security import SecurityService
+from auth_microservice.services.events import publish_security_event
 from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
 from auth_microservice.web.api.v1.security.schemas import (
     SecurityAlertResponse,
@@ -40,6 +41,7 @@ async def list_security_alerts(
 async def update_security_alert(
     alert_id: int,
     payload: SecurityAlertUpdateRequest,
+    request: Request,
     principal: AuthenticatedPrincipal = Depends(require_permission("security.alert.update")),
     session: AsyncSession = Depends(get_db_session),
 ) -> SecurityAlertResponse:
@@ -57,6 +59,15 @@ async def update_security_alert(
         return SecurityAlertResponse.model_validate(alert)
 
     alert = await service.update_alert(alert, updates)
+    await publish_security_event(
+        request,
+        "security.alert.updated",
+        {
+            "alert_id": alert.alert_id,
+            "user_id": alert.user_id,
+            "status": alert.alert_status.value,
+        },
+    )
     return SecurityAlertResponse.model_validate(alert)
 
 

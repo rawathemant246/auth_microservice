@@ -24,6 +24,7 @@ from auth_microservice.db.utils import create_database, drop_database
 from auth_microservice.services.rabbit.dependencies import get_rmq_channel_pool
 from auth_microservice.services.rabbit.lifespan import init_rabbit, shutdown_rabbit
 from auth_microservice.services.redis.dependency import get_redis_pool
+from auth_microservice.services.bootstrap import PlatformBootstrapService
 from auth_microservice.settings import settings
 from auth_microservice.web.application import get_app
 
@@ -202,6 +203,24 @@ async def _engine() -> AsyncGenerator[AsyncEngine, None]:
         await engine.dispose()
         await drop_database()
 
+
+@pytest.fixture(scope="session", autouse=True)
+async def seed_root_superuser(_engine: AsyncEngine) -> None:
+    """Ensure the platform root organization and superuser exist for tests."""
+
+    session_factory = async_sessionmaker(_engine, expire_on_commit=False)
+    async with session_factory() as session:
+        async with session.begin():
+            bootstrapper = PlatformBootstrapService(session)
+            await bootstrapper.bootstrap_superuser(
+                {
+                    "username": "platform_root",
+                    "password": "RootPass123!",
+                    "first_name": "Platform",
+                    "last_name": "Admin",
+                    "contact_information": {"email": "platform_root@example.com"},
+                }
+            )
 
 @pytest.fixture
 async def dbsession(

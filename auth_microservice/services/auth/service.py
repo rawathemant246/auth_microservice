@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.core.security import create_access_token, hash_password, verify_password
+from auth_microservice.observability import ACTIVE_SESSIONS_GAUGE
 from auth_microservice.db.models.oltp import (
     ContactInformation,
     LoginMethodEnum,
@@ -23,6 +24,7 @@ from auth_microservice.db.models.oltp import (
     UserStatusEnum,
 )
 from auth_microservice.settings import settings
+from redis.asyncio import Redis
 
 
 class AuthService:
@@ -160,6 +162,7 @@ class AuthService:
         )
         self._session.add(session_entry)
         await self._session.flush()
+        ACTIVE_SESSIONS_GAUGE.labels(organization_id=str(user.organization_id)).inc()
 
         access_token, expires_minutes = await self.issue_token(
             user,
@@ -184,7 +187,12 @@ class AuthService:
         """Mark a session as revoked."""
 
         session.revoked_at = datetime.now(timezone.utc)
+        organization_id = await self._session.scalar(
+            select(User.organization_id).where(User.user_id == session.user_id)
+        )
         await self._session.flush()
+        if organization_id is not None:
+            ACTIVE_SESSIONS_GAUGE.labels(organization_id=str(organization_id)).dec()
 
     async def refresh_session(
         self,
@@ -248,7 +256,12 @@ class AuthService:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_password_reset_token(self, email: str) -> str | None:
+    async def create_password_reset_token(
+        self,
+        email: str,
+        *,
+        redis: Redis | None = None,
+    ) -> str | None:
         """Create a password reset token for the given email if user exists."""
 
         stmt = (
@@ -262,8 +275,36 @@ class AuthService:
             return None
 
         now = datetime.now(timezone.utc)
-        expires = now + timedelta(minutes=settings.password_reset_token_expires_minutes)
+        expires_minutes = settings.password_reset_token_expires_minutes
+        expires = now + timedelta(minutes=expires_minutes)
         token = secrets.token_urlsafe(32)
+
+        if redis is not None:
+            rate_key = f"password_reset:rate:{user.user_id}"
+            attempts = await redis.incr(rate_key)
+            if attempts == 1:
+                await redis.expire(rate_key, 3600)
+            if attempts > 5:
+                logger.warning("Password reset rate limited for user id=%s", user.user_id)
+                return None
+
+            user_key = f"password_reset:user:{user.user_id}"
+            previous_token = await redis.get(user_key)
+            if previous_token:
+                token_value = previous_token.decode() if isinstance(previous_token, bytes) else str(previous_token)
+                await redis.delete(f"password_reset:token:{token_value}")
+
+            pipeline = redis.pipeline()
+            pipeline.setex(
+                f"password_reset:token:{token}",
+                expires_minutes * 60,
+                user.user_id,
+            )
+            pipeline.setex(user_key, expires_minutes * 60, token)
+            await pipeline.execute()
+            logger.info("Created password reset token for user id=%s (redis)", user.user_id)
+            return token
+
         reset_entry = PasswordReset(
             user_id=user.user_id,
             reset_token=token,
@@ -275,27 +316,50 @@ class AuthService:
         logger.info("Created password reset token for user id=%s", user.user_id)
         return token
 
-    async def reset_password(self, token: str, new_password: str) -> User:
+    async def reset_password(
+        self,
+        token: str,
+        new_password: str,
+        *,
+        redis: Redis | None = None,
+    ) -> User:
         """Reset password for token if valid."""
 
-        stmt = select(PasswordReset).where(PasswordReset.reset_token == token)
-        result = await self._session.execute(stmt)
-        reset_entry = result.scalar_one_or_none()
-        if reset_entry is None:
-            raise ValueError("invalid_token")
-        if reset_entry.token_used:
-            raise ValueError("token_used")
+        if redis is not None:
+            user_id_bytes = await redis.get(f"password_reset:token:{token}")
+            if user_id_bytes is None:
+                raise ValueError("invalid_token")
+            user_id = int(user_id_bytes)
+            user = await self._session.get(User, user_id)
+            if user is None:
+                raise ValueError("user_not_found")
+            pipeline = redis.pipeline()
+            pipeline.delete(f"password_reset:token:{token}")
+            pipeline.delete(f"password_reset:user:{user.user_id}")
+            await pipeline.execute()
+        else:
+            stmt = select(PasswordReset).where(PasswordReset.reset_token == token)
+            result = await self._session.execute(stmt)
+            reset_entry = result.scalar_one_or_none()
+            if reset_entry is None:
+                raise ValueError("invalid_token")
+            if reset_entry.token_used:
+                raise ValueError("token_used")
+            now = datetime.now(timezone.utc)
+            if reset_entry.expires_at < now:
+                raise ValueError("token_expired")
+
+            user = await self._session.get(User, reset_entry.user_id)
+            if user is None:
+                raise ValueError("user_not_found")
+
+            reset_entry.token_used = True
+
         now = datetime.now(timezone.utc)
-        if reset_entry.expires_at < now:
-            raise ValueError("token_expired")
-
-        user = await self._session.get(User, reset_entry.user_id)
-        if user is None:
-            raise ValueError("user_not_found")
-
         user.password = hash_password(new_password)
         user.updated_at = now
-        reset_entry.token_used = True
+        if redis is None:
+            reset_entry.token_used = True
         await self._session.flush()
         logger.info("Password reset for user id=%s", user.user_id)
         return user

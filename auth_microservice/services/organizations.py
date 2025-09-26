@@ -103,6 +103,12 @@ PERMISSION_DESCRIPTIONS: dict[str, str] = {
     "audit.log.read": "View audit log entries",
     "activity.login.read": "Review login activity",
     "activity.user.read": "Review user activity",
+    "platform.bootstrap": "Initialize platform bootstrap workflows",
+    "platform.metrics.read": "Read platform metrics",
+    "platform.organizations.manage": "Manage organizations across tenants",
+    "platform.users.manage": "Manage users across organizations",
+    "platform.rbac.manage": "Manage platform-wide RBAC configuration",
+    "platform.audit.view": "View platform-level audit logs",
 }
 
 

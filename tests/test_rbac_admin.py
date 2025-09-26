@@ -8,6 +8,10 @@ from auth_microservice.db.models.oltp import Role, User
 from auth_microservice.settings import settings
 
 
+def _bootstrap_headers(secret: str) -> dict[str, str]:
+    return {"X-Bootstrap-Secret": secret}
+
+
 @pytest.fixture
 def bootstrap_secret() -> str:
     original = settings.bootstrap_secret
@@ -26,7 +30,6 @@ async def _bootstrap_and_login(
 ) -> tuple[int, dict[str, str]]:
     bootstrap_url = fastapi_app.url_path_for("bootstrap_organization")
     payload = {
-        "bootstrap_secret": secret,
         "organization_name": "RBAC Academy",
         "admin_user": {
             "first_name": "Rhea",
@@ -38,7 +41,11 @@ async def _bootstrap_and_login(
             },
         },
     }
-    response = await client.post(bootstrap_url, json=payload)
+    response = await client.post(
+        bootstrap_url,
+        json=payload,
+        headers=_bootstrap_headers(secret),
+    )
     assert response.status_code == 201
     organization_id = response.json()["organization_id"]
 
@@ -134,4 +141,3 @@ async def test_rbac_management_flow(
 
     role_record = await dbsession.scalar(select(Role).where(Role.role_id == role_id))
     assert role_record is None
-

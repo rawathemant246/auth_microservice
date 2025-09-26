@@ -16,6 +16,10 @@ from auth_microservice.services.organizations import ADMIN_PERMISSION_NAMES
 from auth_microservice.settings import settings
 
 
+def _bootstrap_headers(secret: str) -> dict[str, str]:
+    return {"X-Bootstrap-Secret": secret}
+
+
 @pytest.fixture
 def bootstrap_secret() -> str:
     original = settings.bootstrap_secret
@@ -36,7 +40,6 @@ async def test_bootstrap_organization(
 ) -> None:
     url = fastapi_app.url_path_for("bootstrap_organization")
     payload = {
-        "bootstrap_secret": bootstrap_secret,
         "organization_name": "Bootstrap Academy",
         "admin_user": {
             "first_name": "Alice",
@@ -49,7 +52,7 @@ async def test_bootstrap_organization(
         },
     }
 
-    response = await client.post(url, json=payload)
+    response = await client.post(url, json=payload, headers=_bootstrap_headers(bootstrap_secret))
     assert response.status_code == 201
     data = response.json()
 
@@ -80,7 +83,6 @@ async def test_organization_admin_flow(
 ) -> None:
     bootstrap_url = fastapi_app.url_path_for("bootstrap_organization")
     bootstrap_payload = {
-        "bootstrap_secret": bootstrap_secret,
         "organization_name": "Launch School",
         "admin_user": {
             "first_name": "Lara",
@@ -92,7 +94,11 @@ async def test_organization_admin_flow(
             },
         },
     }
-    bootstrap_response = await client.post(bootstrap_url, json=bootstrap_payload)
+    bootstrap_response = await client.post(
+        bootstrap_url,
+        json=bootstrap_payload,
+        headers=_bootstrap_headers(bootstrap_secret),
+    )
     assert bootstrap_response.status_code == 201
 
     login_url = fastapi_app.url_path_for("login")
@@ -166,6 +172,8 @@ async def test_organization_admin_flow(
     )
     assert new_admin_user is not None
     assert new_admin_user.organization_id == organization_id
+
+
 @pytest.mark.anyio
 async def test_settings_and_privacy_flow(
     client: AsyncClient,
@@ -174,7 +182,6 @@ async def test_settings_and_privacy_flow(
 ) -> None:
     bootstrap_url = fastapi_app.url_path_for("bootstrap_organization")
     payload = {
-        "bootstrap_secret": bootstrap_secret,
         "organization_name": "Settings School",
         "admin_user": {
             "first_name": "Sally",
@@ -184,7 +191,11 @@ async def test_settings_and_privacy_flow(
             "contact_information": {"email": "sally.settings@example.com"},
         },
     }
-    response = await client.post(bootstrap_url, json=payload)
+    response = await client.post(
+        bootstrap_url,
+        json=payload,
+        headers=_bootstrap_headers(bootstrap_secret),
+    )
     assert response.status_code == 201
     organization_id = response.json()["organization_id"]
 

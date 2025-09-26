@@ -9,6 +9,7 @@ from prometheus_fastapi_instrumentator.instrumentation import (
 )
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from auth_microservice.observability import refresh_active_sessions_gauge
 from auth_microservice.rbac.service import RbacService
 from auth_microservice.services.document_store import DocumentStoreService
 from auth_microservice.services.rabbit.lifespan import init_rabbit, shutdown_rabbit
@@ -77,11 +78,16 @@ async def lifespan_setup(
         await broker.startup()
     _setup_db(app)
     _setup_document_store(app)
-    rbac_model_path = Path(__file__).resolve().parent.parent / "rbac" / "model.conf"
-    app.state.rbac_service = RbacService(app.state.db_session_factory, rbac_model_path)
-    await app.state.rbac_service.ensure_policies_loaded()
     init_redis(app)
     init_rabbit(app)
+    rbac_model_path = Path(__file__).resolve().parent.parent / "rbac" / "model.conf"
+    app.state.rbac_service = RbacService(
+        app.state.db_session_factory,
+        rbac_model_path,
+        app.state.redis_pool,
+    )
+    await app.state.rbac_service.ensure_policies_loaded()
+    await refresh_active_sessions_gauge(app.state.db_session_factory)
     setup_prometheus(app)
     app.middleware_stack = app.build_middleware_stack()
 
