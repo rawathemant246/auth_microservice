@@ -124,7 +124,7 @@ async def google_sso_callback(
     auth_service = AuthService(session)
     try:
         exchange = await casdoor_service.exchange_code(payload.code, payload.state)
-    except Exception as exc:  # noqa: BLE001 - bubble up as HTTP error
+    except Exception as exc:  # - bubble up as HTTP error
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sso_exchange_failed") from exc
 
     profile = exchange.get("profile", {})
@@ -145,7 +145,7 @@ async def google_sso_callback(
 
     # Fetch email from contact information to ensure we have stored reference
     result = await session.execute(
-        select(ContactInformation.email_id).where(ContactInformation.user_id == user.user_id)
+        select(ContactInformation.email_id).where(ContactInformation.user_id == user.user_id),
     )
     contact_email = result.scalar_one_or_none() or email
 

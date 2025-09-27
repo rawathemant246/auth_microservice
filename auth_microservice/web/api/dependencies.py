@@ -44,7 +44,7 @@ async def get_current_principal(
 
     try:
         payload = decode_token(token)
-    except JWTError as exc:  # noqa: W0703 - intentionally masking token parsing issues
+    except JWTError as exc:  # - intentionally masking token parsing issues
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token") from exc
 
     subject = payload.get("sub")

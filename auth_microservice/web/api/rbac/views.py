@@ -5,12 +5,12 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from auth_microservice.rbac.service import RbacService
+from auth_microservice.settings import settings
 from auth_microservice.web.api.rbac.schemas import (
     RbacCheckRequest,
     RbacCheckResponse,
     UserPermissionsResponse,
 )
-from auth_microservice.settings import settings
 
 router = APIRouter(prefix="/rbac", tags=["rbac"])
 

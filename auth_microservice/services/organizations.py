@@ -16,7 +16,6 @@ from auth_microservice.db.models.oltp import (
     RolePermission,
 )
 
-
 ADMIN_PERMISSION_NAMES: list[str] = [
     "org.create",
     "org.read",
@@ -127,7 +126,7 @@ class OrganizationService:
         """Create a new organization with a default administrator role."""
 
         existing = await self._session.scalar(
-            select(Organization).where(Organization.organization_name == name)
+            select(Organization).where(Organization.organization_name == name),
         )
         if existing is not None:
             raise ValueError("organization_name_exists")
@@ -150,7 +149,7 @@ class OrganizationService:
         role = await self._session.scalar(
             select(Role)
             .where(Role.organization_id == organization.organization_id)
-            .where(Role.role_name == role_name)
+            .where(Role.role_name == role_name),
         )
         if role is None:
             role = Role(
@@ -168,7 +167,7 @@ class OrganizationService:
             select(RolePermission.permission_id).where(
                 RolePermission.role_id == role.role_id,
                 RolePermission.organization_id == organization.organization_id,
-            )
+            ),
         )
         existing_relations = set(existing_relations_result.all())
 
@@ -180,7 +179,7 @@ class OrganizationService:
                     role_id=role.role_id,
                     permission_id=permission.permission_id,
                     organization_id=organization.organization_id,
-                )
+                ),
             )
 
         await self._session.flush()
@@ -193,18 +192,18 @@ class OrganizationService:
     ) -> Organization:
         """Apply updates to an organization enforcing name uniqueness."""
 
-        if "organization_name" in updates and updates["organization_name"]:
+        if updates.get("organization_name"):
             new_name = updates["organization_name"]
             conflict = await self._session.scalar(
                 select(Organization)
                 .where(Organization.organization_name == new_name)
-                .where(Organization.organization_id != organization.organization_id)
+                .where(Organization.organization_id != organization.organization_id),
             )
             if conflict is not None:
                 raise ValueError("organization_name_exists")
             organization.organization_name = new_name
 
-        if "license_status" in updates and updates["license_status"]:
+        if updates.get("license_status"):
             organization.license_status = updates["license_status"]
 
         await self._session.flush()
@@ -223,7 +222,7 @@ class OrganizationService:
         """Return all organizations ordered by identifier."""
 
         result = await self._session.execute(
-            select(Organization).order_by(Organization.organization_id)
+            select(Organization).order_by(Organization.organization_id),
         )
         return list(result.scalars())
 
@@ -236,7 +235,7 @@ class OrganizationService:
             return {}
 
         result = await self._session.execute(
-            select(Permission).where(Permission.permission_name.in_(names))
+            select(Permission).where(Permission.permission_name.in_(names)),
         )
         found = {permission.permission_name: permission for permission in result.scalars()}
 

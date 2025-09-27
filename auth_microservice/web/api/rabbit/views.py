@@ -3,8 +3,8 @@ from aio_pika.pool import Pool
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from auth_microservice.services.rabbit.dependencies import get_rmq_channel_pool
-from auth_microservice.web.api.rabbit.schema import RMQMessageDTO
 from auth_microservice.settings import settings
+from auth_microservice.web.api.rabbit.schema import RMQMessageDTO
 
 router = APIRouter()
 

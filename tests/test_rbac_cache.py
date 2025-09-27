@@ -4,6 +4,7 @@ import pytest
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from auth_microservice.core.security import hash_password
 from auth_microservice.db.models.oltp import (
     LicenseStatusEnum,
     Organization,
@@ -13,7 +14,6 @@ from auth_microservice.db.models.oltp import (
     User,
 )
 from auth_microservice.rbac.service import RbacService
-from auth_microservice.core.security import hash_password
 
 
 @pytest.mark.anyio
@@ -48,7 +48,7 @@ async def test_rbac_decisions_are_cached(
             role_id=role.role_id,
             permission_id=permission.permission_id,
             organization_id=organization.organization_id,
-        )
+        ),
     )
 
     user = User(

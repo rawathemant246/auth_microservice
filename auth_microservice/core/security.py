@@ -10,7 +10,6 @@ from passlib.context import CryptContext
 
 from auth_microservice.settings import settings
 
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 

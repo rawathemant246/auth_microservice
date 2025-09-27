@@ -45,8 +45,8 @@ SUPER_ADMIN_PERMISSION_NAMES: tuple[str, ...] = tuple(
             "platform.users.manage",
             "platform.rbac.manage",
             "platform.audit.view",
-        }
-    )
+        },
+    ),
 )
 
 
@@ -60,7 +60,7 @@ class PlatformBootstrapService:
         """Return True when at least one organization is present."""
 
         count = await self._session.scalar(
-            select(func.count()).select_from(Organization)
+            select(func.count()).select_from(Organization),
         )
         return bool(count)
 
@@ -68,7 +68,7 @@ class PlatformBootstrapService:
         """Fetch or create the global root organization."""
 
         organization = await self._session.scalar(
-            select(Organization).where(Organization.organization_name == ROOT_ORGANIZATION_NAME)
+            select(Organization).where(Organization.organization_name == ROOT_ORGANIZATION_NAME),
         )
         if organization is not None:
             return organization
@@ -86,7 +86,7 @@ class PlatformBootstrapService:
         """Fetch or create the super admin role bound to the root organization."""
 
         role = await self._session.scalar(
-            select(Role).where(Role.role_name == SUPER_ADMIN_ROLE_NAME)
+            select(Role).where(Role.role_name == SUPER_ADMIN_ROLE_NAME),
         )
         if role is None:
             role = Role(
@@ -103,7 +103,7 @@ class PlatformBootstrapService:
             select(RolePermission.permission_id).where(
                 RolePermission.role_id == role.role_id,
                 RolePermission.organization_id == organization.organization_id,
-            )
+            ),
         )
         assigned = set(existing_assignments.all())
 
@@ -115,7 +115,7 @@ class PlatformBootstrapService:
                     role_id=role.role_id,
                     permission_id=permission.permission_id,
                     organization_id=organization.organization_id,
-                )
+                ),
             )
         await self._session.flush()
         return role
@@ -130,7 +130,7 @@ class PlatformBootstrapService:
         role = await self.ensure_super_admin_role(organization)
 
         existing_super_user = await self._session.scalar(
-            select(User).where(User.role_id == role.role_id)
+            select(User).where(User.role_id == role.role_id),
         )
         if existing_super_user is not None:
             return SuperuserBootstrapResult(
@@ -168,7 +168,7 @@ class PlatformBootstrapService:
             return {}
 
         result = await self._session.execute(
-            select(Permission).where(Permission.permission_name.in_(names))
+            select(Permission).where(Permission.permission_name.in_(names)),
         )
         found = {permission.permission_name: permission for permission in result.scalars()}
 

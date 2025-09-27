@@ -10,10 +10,9 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.models.oltp import (
-    BillingPlan,
     BillingCycleEnum,
+    BillingPlan,
     Invoice,
-    InvoiceStatusEnum,
     PaymentStatusEnum,
     PlanTypeEnum,
     Subscription,
@@ -51,7 +50,7 @@ class BillingService:
         support_level: SupportLevelEnum | None,
     ) -> BillingPlan:
         existing = await self._session.scalar(
-            select(BillingPlan).where(BillingPlan.plan_name == plan_name)
+            select(BillingPlan).where(BillingPlan.plan_name == plan_name),
         )
         if existing is not None:
             raise ValueError("plan_name_exists")
@@ -77,7 +76,7 @@ class BillingService:
     ) -> BillingPlan:
         if "plan_name" in updates and updates["plan_name"] and updates["plan_name"] != plan.plan_name:
             conflict = await self._session.scalar(
-                select(BillingPlan).where(BillingPlan.plan_name == updates["plan_name"])
+                select(BillingPlan).where(BillingPlan.plan_name == updates["plan_name"]),
             )
             if conflict is not None:
                 raise ValueError("plan_name_exists")
@@ -104,7 +103,7 @@ class BillingService:
 
     async def get_subscription(self, organization_id: int) -> Subscription | None:
         stmt: Select[Subscription] = select(Subscription).where(
-            Subscription.organization_id == organization_id
+            Subscription.organization_id == organization_id,
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()

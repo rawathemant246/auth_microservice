@@ -17,7 +17,6 @@ from auth_microservice.web.api.v1.bootstrap.schemas import (
     BootstrapOrganizationResponse,
 )
 
-
 router = APIRouter(prefix="/v1/bootstrap", tags=["bootstrap"])
 
 def _validate_bootstrap_secret(secret: str | None) -> None:

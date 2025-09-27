@@ -7,8 +7,8 @@ from datetime import datetime
 from typing import Any
 
 from aio_pika import Message
-from aio_pika.pool import Pool
 from aio_pika.abc import AbstractChannel
+from aio_pika.pool import Pool
 from fastapi import Request
 
 

@@ -6,13 +6,18 @@ import os
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
-from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, REGISTRY, generate_latest
-from prometheus_client import multiprocess
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    CollectorRegistry,
+    generate_latest,
+    multiprocess,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.services.metrics import MetricsService
 from auth_microservice.services.events import publish_log_ingest
+from auth_microservice.services.metrics import MetricsService
 from auth_microservice.settings import settings
 from auth_microservice.web.api.metrics.schemas import (
     SystemAlertIngestRequest,

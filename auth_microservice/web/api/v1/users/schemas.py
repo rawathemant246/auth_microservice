@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from auth_microservice.db.models.oltp import GenderEnum, UserStatusEnum
 from auth_microservice.web.api.auth.schemas import ContactInformationInput

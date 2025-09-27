@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from typing import Any, Deque, Dict, Set
+from typing import Deque, Dict, Set
 
 import aio_pika
 from aio_pika import Message
@@ -44,7 +44,7 @@ class _InMemoryQueue:
         body = self._messages.popleft()
         return _InMemoryMessage(body)
 
-    async def delete(self, *, if_unused: bool = False, if_empty: bool = False) -> None:  # noqa: ARG002
+    async def delete(self, *, if_unused: bool = False, if_empty: bool = False) -> None:
         self._broker.delete_queue(self.name)
 
     # Helpers -----------------------------------------------------------------
@@ -62,7 +62,7 @@ class _InMemoryExchange:
     async def publish(self, message: Message, routing_key: str) -> None:
         self._broker.publish(self.name, routing_key, message.body)
 
-    async def delete(self, *, if_unused: bool = False) -> None:  # noqa: ARG002
+    async def delete(self, *, if_unused: bool = False) -> None:
         self._broker.delete_exchange(self.name)
 
 
@@ -72,10 +72,10 @@ class _InMemoryChannel:
     def __init__(self, broker: "_InMemoryBroker") -> None:
         self._broker = broker
 
-    async def declare_exchange(self, name: str, auto_delete: bool = True) -> _InMemoryExchange:  # noqa: ARG002
+    async def declare_exchange(self, name: str, auto_delete: bool = True) -> _InMemoryExchange:
         return self._broker.get_exchange(name)
 
-    async def declare_queue(self, name: str, auto_delete: bool = True) -> _InMemoryQueue:  # noqa: ARG002
+    async def declare_queue(self, name: str, auto_delete: bool = True) -> _InMemoryQueue:
         return self._broker.get_queue(name)
 
     async def get_exchange(self, name: str, ensure: bool = False) -> _InMemoryExchange:

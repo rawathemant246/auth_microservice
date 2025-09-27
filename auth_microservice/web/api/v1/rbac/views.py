@@ -10,7 +10,10 @@ from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import Permission, Role, RolePermission, User
 from auth_microservice.rbac.service import RbacService
 from auth_microservice.services.rbac_admin import RbacAdminService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.rbac.schemas import (
     EffectivePermissionsResponse,
     PermissionCreateRequest,
@@ -23,7 +26,6 @@ from auth_microservice.web.api.v1.rbac.schemas import (
     RoleUpdateRequest,
     UserRoleAssignRequest,
 )
-
 
 router = APIRouter(prefix="/v1/rbac", tags=["rbac"])
 
@@ -107,7 +109,7 @@ async def update_role(
             RolePermission.role_id == role.role_id,
             RolePermission.organization_id == principal.organization_id,
         )
-        .order_by(RolePermission.permission_id)
+        .order_by(RolePermission.permission_id),
     )
     permissions = list(permission_result.scalars().all())
     await _get_rbac_service(request).invalidate_cache()

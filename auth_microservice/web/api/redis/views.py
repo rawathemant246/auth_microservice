@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from redis.asyncio import ConnectionPool, Redis
 
 from auth_microservice.services.redis.dependency import get_redis_pool
-from auth_microservice.web.api.redis.schema import RedisValueDTO
 from auth_microservice.settings import settings
+from auth_microservice.web.api.redis.schema import RedisValueDTO
 
 router = APIRouter()
 

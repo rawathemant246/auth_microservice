@@ -9,10 +9,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.db.models.oltp import ContactInformation, Organization, User, UserStatusEnum
+from auth_microservice.db.models.oltp import (
+    ContactInformation,
+    Organization,
+    User,
+    UserStatusEnum,
+)
 from auth_microservice.services.auth.service import AuthService
-from auth_microservice.services.users import UserService
 from auth_microservice.services.events import publish_audit_event
+from auth_microservice.services.users import UserService
 from auth_microservice.web.api.dependencies import (
     AuthenticatedPrincipal,
     require_permission,
@@ -22,10 +27,9 @@ from auth_microservice.web.api.v1.users.schemas import (
     UserContactUpdateRequest,
     UserCreateRequest,
     UserResponse,
-    UserUpdateRequest,
     UsersListResponse,
+    UserUpdateRequest,
 )
-
 
 router = APIRouter(prefix="/v1", tags=["users"])
 

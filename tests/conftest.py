@@ -21,10 +21,10 @@ from sqlalchemy.ext.asyncio import (
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.utils import create_database, drop_database
+from auth_microservice.services.bootstrap import PlatformBootstrapService
 from auth_microservice.services.rabbit.dependencies import get_rmq_channel_pool
 from auth_microservice.services.rabbit.lifespan import init_rabbit, shutdown_rabbit
 from auth_microservice.services.redis.dependency import get_redis_pool
-from auth_microservice.services.bootstrap import PlatformBootstrapService
 from auth_microservice.settings import settings
 from auth_microservice.web.application import get_app
 
@@ -132,7 +132,7 @@ class InMemoryDocumentStore:
                     str(document.get("content", "")),
                     str(document.get("category", "")),
                     str(document.get("status", "")),
-                ]
+                ],
             ).lower()
             if lowered in text:
                 results.append(dict(document))
@@ -152,10 +152,10 @@ class InMemoryDocumentStore:
 
 
 class StubRbacService:
-    async def reload_policies(self) -> None:  # noqa: D401 - simple stub
+    async def reload_policies(self) -> None:  # - simple stub
         return None
 
-    async def invalidate_cache(self) -> None:  # noqa: D401 - simple stub
+    async def invalidate_cache(self) -> None:  # - simple stub
         return None
 
     async def enforce(
@@ -168,7 +168,7 @@ class StubRbacService:
     ) -> bool:
         return True
 
-    async def get_user_permissions(self, user_id: int, organization_id: int) -> list[str]:  # noqa: ARG002
+    async def get_user_permissions(self, user_id: int, organization_id: int) -> list[str]:
         return []
 
 
@@ -222,7 +222,7 @@ async def seed_root_superuser(_engine: AsyncEngine) -> None:
                     "first_name": "Platform",
                     "last_name": "Admin",
                     "contact_information": {"email": "platform_root@example.com"},
-                }
+                },
             )
 
 @pytest.fixture

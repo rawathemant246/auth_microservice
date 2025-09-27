@@ -4,26 +4,28 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import Invoice, Subscription
 from auth_microservice.services.billing import BillingService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.billing.schemas import (
     BillingPlanCreateRequest,
     BillingPlanResponse,
-    BillingPlanUpdateRequest,
     BillingPlansListResponse,
+    BillingPlanUpdateRequest,
     InvoiceResponse,
-    InvoiceUpdateRequest,
     InvoicesListResponse,
+    InvoiceUpdateRequest,
     SubscriptionCreateRequest,
     SubscriptionResponse,
     SubscriptionUpdateRequest,
 )
-
 
 plans_router = APIRouter(prefix="/v1/billing", tags=["billing"])
 org_router = APIRouter(prefix="/v1", tags=["billing"])

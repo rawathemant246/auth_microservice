@@ -92,7 +92,7 @@ class AdminService:
                     "status": invoice.status,
                     "invoice_date": invoice.invoice_date,
                     "due_date": invoice.due_date,
-                }
+                },
             )
         return invoices
 
@@ -114,7 +114,7 @@ class AdminService:
                 {
                     "date": cast_date.isoformat() if isinstance(cast_date, date) else str(cast_date),
                     "logins": count,
-                }
+                },
             )
         activity.reverse()
         return activity
@@ -123,21 +123,21 @@ class AdminService:
         await self.ensure_organization(organization_id)
 
         roles_result = await self._session.execute(
-            select(Role).where(Role.organization_id == organization_id).order_by(Role.role_name)
+            select(Role).where(Role.organization_id == organization_id).order_by(Role.role_name),
         )
         roles = roles_result.scalars().all()
 
         perm_rows = await self._session.execute(
             select(RolePermission.role_id, Permission)
             .join(Permission, Permission.permission_id == RolePermission.permission_id)
-            .where(RolePermission.organization_id == organization_id)
+            .where(RolePermission.organization_id == organization_id),
         )
         permissions_map: dict[int, list[Permission]] = defaultdict(list)
         for role_id, permission in perm_rows.all():
             permissions_map[role_id].append(permission)
 
         user_rows = await self._session.execute(
-            select(User).where(User.organization_id == organization_id)
+            select(User).where(User.organization_id == organization_id),
         )
         users_by_role: dict[int | None, list[User]] = defaultdict(list)
         for user in user_rows.scalars():
@@ -170,7 +170,7 @@ class AdminService:
                         }
                         for user in sorted(role_users, key=lambda u: u.username)
                     ],
-                }
+                },
             )
 
         return {

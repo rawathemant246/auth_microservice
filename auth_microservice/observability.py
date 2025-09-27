@@ -42,7 +42,7 @@ async def refresh_active_sessions_gauge(
             .join(UserLogin, UserLogin.user_id == User.user_id)
             .where(UserLogin.revoked_at.is_(None))
             .where(UserLogin.refresh_token_expires_at > now)
-            .group_by(User.organization_id)
+            .group_by(User.organization_id),
         )
         for organization_id, count in result.all():
             ACTIVE_SESSIONS_GAUGE.labels(organization_id=str(organization_id)).set(count)

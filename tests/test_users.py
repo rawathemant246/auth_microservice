@@ -128,7 +128,7 @@ async def test_user_management_flow(
     assert delete_response.json()["status"] == UserStatusEnum.INACTIVE.value
 
     archived = await dbsession.scalar(
-        select(ArchivedUser).where(ArchivedUser.user_id == user_id)
+        select(ArchivedUser).where(ArchivedUser.user_id == user_id),
     )
     assert archived is not None
 

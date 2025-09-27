@@ -68,7 +68,7 @@ async def test_bootstrap_organization(
     result = await dbsession.execute(
         select(Permission.permission_name)
         .join(RolePermission, Permission.permission_id == RolePermission.permission_id)
-        .where(RolePermission.role_id == role.role_id)
+        .where(RolePermission.role_id == role.role_id),
     )
     role_permissions = set(result.scalars().all())
     assert set(ADMIN_PERMISSION_NAMES).issubset(role_permissions)
@@ -168,7 +168,7 @@ async def test_organization_admin_flow(
     assert deactivate_response.json()["license_status"] == LicenseStatusEnum.SUSPENDED.value
 
     new_admin_user = await dbsession.scalar(
-        select(User).where(User.username == "second_admin")
+        select(User).where(User.username == "second_admin"),
     )
     assert new_admin_user is not None
     assert new_admin_user.organization_id == organization_id

@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import hashlib
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from redis.asyncio import Redis
+from redis.asyncio.connection import ConnectionPool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.db.models.oltp import ContactInformation, User, SsoProviderName
+from auth_microservice.db.models.oltp import ContactInformation, SsoProviderName, User
 from auth_microservice.services.auth.service import AuthService
-from auth_microservice.services.sso import CasdoorService
 from auth_microservice.services.events import (
     publish_email_event,
     publish_security_event,
 )
 from auth_microservice.services.redis.dependency import get_redis_pool
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, get_current_principal
+from auth_microservice.services.sso import CasdoorService
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    get_current_principal,
+)
 from auth_microservice.web.api.v1.auth.schemas import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -38,8 +43,6 @@ from auth_microservice.web.api.v1.auth.schemas import (
     TokenPair,
     UserProfileResponse,
 )
-from redis.asyncio import Redis
-from redis.asyncio.connection import ConnectionPool
 
 router = APIRouter(prefix="/v1/auth", tags=["auth"])
 
@@ -205,7 +208,7 @@ async def refresh_token(
             "access_token_expires_minutes": refreshed["access_token_expires_minutes"],
             "refresh_token": refreshed["refresh_token"],
             "refresh_token_expires_at": refreshed["refresh_token_expires_at"],
-        }
+        },
     )
     profile = await _build_user_profile(session, refreshed["user"], refreshed.get("email"))
     return RefreshResponse(tokens=tokens, user=profile)
@@ -281,7 +284,7 @@ async def sso_callback(
     auth_service = AuthService(session)
     try:
         exchange = await casdoor_service.exchange_code(params.code, params.state)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sso_exchange_failed") from exc
 
     profile = exchange.get("profile", {})
@@ -327,7 +330,7 @@ async def link_sso(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user_not_found")
     try:
         exchange = await casdoor_service.exchange_code(payload.code, payload.state)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="sso_exchange_failed") from exc
 
     profile = exchange.get("profile", {})

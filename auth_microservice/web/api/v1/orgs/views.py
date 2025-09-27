@@ -15,21 +15,20 @@ from auth_microservice.web.api.dependencies import (
     require_permission,
     require_permissions,
 )
+from auth_microservice.web.api.settings.schemas import (
+    OrganizationSettingsResponse,
+    PrivacySettingsResponse,
+)
 from auth_microservice.web.api.v1.orgs.schemas import (
     AdminUserCreateRequest,
     AdminUserResponse,
     OrganizationCreateRequest,
     OrganizationResponse,
-    OrganizationUpdateRequest,
     OrganizationSettingsUpdateRequest,
-    PrivacySettingsUpdateRequest,
     OrganizationsListResponse,
+    OrganizationUpdateRequest,
+    PrivacySettingsUpdateRequest,
 )
-from auth_microservice.web.api.settings.schemas import (
-    OrganizationSettingsResponse,
-    PrivacySettingsResponse,
-)
-
 
 router = APIRouter(prefix="/v1/orgs", tags=["organizations"])
 

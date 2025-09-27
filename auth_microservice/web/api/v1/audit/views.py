@@ -9,8 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.services.audit import AuditService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
-from auth_microservice.web.api.v1.audit.schemas import AuditLogResponse, AuditLogsResponse
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
+from auth_microservice.web.api.v1.audit.schemas import (
+    AuditLogResponse,
+    AuditLogsResponse,
+)
 
 audit_router = APIRouter(prefix="/v1/audit", tags=["audit"])
 

@@ -5,14 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from auth_microservice.services.document_store import DocumentStoreService
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.settings.schemas import (
     OrganizationSettingsResponse,
     PrivacySettingsResponse,
     UserFeedbackResponse,
-)
-from auth_microservice.web.api.dependencies import (
-    AuthenticatedPrincipal,
-    require_permission,
 )
 
 router = APIRouter(prefix="/settings", tags=["settings"])

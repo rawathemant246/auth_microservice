@@ -11,7 +11,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from auth_microservice.db.base import Base
 
-
 # region: Enumerations ------------------------------------------------------------------
 
 
@@ -193,26 +192,26 @@ class Organization(Base):
         nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     users: Mapped[list["User"]] = relationship("User", back_populates="organization", foreign_keys="User.organization_id", primaryjoin="Organization.organization_id == User.organization_id")
     roles: Mapped[list["Role"]] = relationship("Role", back_populates="organization")
     subscriptions: Mapped[list["Subscription"]] = relationship(
-        "Subscription", back_populates="organization"
+        "Subscription", back_populates="organization",
     )
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="organization")
     usage_metrics: Mapped[list["UsageMetric"]] = relationship(
-        "UsageMetric", back_populates="organization"
+        "UsageMetric", back_populates="organization",
     )
     system_health_logs: Mapped[list["SystemHealthLog"]] = relationship(
-        "SystemHealthLog", back_populates="organization"
+        "SystemHealthLog", back_populates="organization",
     )
     system_alerts: Mapped[list["SystemAlert"]] = relationship(
-        "SystemAlert", back_populates="organization"
+        "SystemAlert", back_populates="organization",
     )
 
 
@@ -223,21 +222,21 @@ class Role(Base):
 
     role_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     role_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     role_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="roles")
     users: Mapped[list["User"]] = relationship("User", back_populates="role")
     role_permissions: Mapped[list["RolePermission"]] = relationship(
-        "RolePermission", back_populates="role", cascade="all, delete-orphan"
+        "RolePermission", back_populates="role", cascade="all, delete-orphan",
     )
 
 
@@ -250,11 +249,11 @@ class Permission(Base):
     permission_name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     permission_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
 
     role_permissions: Mapped[list["RolePermission"]] = relationship(
-        "RolePermission", back_populates="permission", cascade="all, delete-orphan"
+        "RolePermission", back_populates="permission", cascade="all, delete-orphan",
     )
 
 
@@ -268,13 +267,13 @@ class RolePermission(Base):
 
     role_id: Mapped[int] = mapped_column(ForeignKey("uuh_roles.role_id"), nullable=False)
     permission_id: Mapped[int] = mapped_column(
-        ForeignKey("uuh_permission.permission_id"), nullable=False
+        ForeignKey("uuh_permission.permission_id"), nullable=False,
     )
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
 
     role: Mapped[Role] = relationship("Role", back_populates="role_permissions")
@@ -298,19 +297,19 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     date_of_birth: Mapped[str | None] = mapped_column(String(32), nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(
-        Enum(GenderEnum, name="gender_enum"), nullable=True
+        Enum(GenderEnum, name="gender_enum"), nullable=True,
     )
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     role_id: Mapped[int | None] = mapped_column(ForeignKey("uuh_roles.role_id"), nullable=True)
     profile_img_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     nationality: Mapped[str | None] = mapped_column(String(128), nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
     status: Mapped[UserStatusEnum] = mapped_column(
         Enum(UserStatusEnum, name="user_status_enum"),
@@ -327,32 +326,32 @@ class User(Base):
     )
     role: Mapped[Role | None] = relationship("Role", back_populates="users")
     contact_information: Mapped["ContactInformation | None"] = relationship(
-        "ContactInformation", back_populates="user", uselist=False
+        "ContactInformation", back_populates="user", uselist=False,
     )
     login_records: Mapped[list["UserLogin"]] = relationship(
-        "UserLogin", back_populates="user", cascade="all, delete-orphan"
+        "UserLogin", back_populates="user", cascade="all, delete-orphan",
     )
     password_resets: Mapped[list["PasswordReset"]] = relationship(
-        "PasswordReset", back_populates="user", cascade="all, delete-orphan"
+        "PasswordReset", back_populates="user", cascade="all, delete-orphan",
     )
     archived_entries: Mapped[list["ArchivedUser"]] = relationship(
-        "ArchivedUser", back_populates="user", cascade="all, delete-orphan"
+        "ArchivedUser", back_populates="user", cascade="all, delete-orphan",
     )
     sso_accounts: Mapped[list["SsoProvider"]] = relationship(
-        "SsoProvider", back_populates="user", cascade="all, delete-orphan"
+        "SsoProvider", back_populates="user", cascade="all, delete-orphan",
     )
     support_tickets: Mapped[list["SupportTicket"]] = relationship(
-        "SupportTicket", back_populates="user"
+        "SupportTicket", back_populates="user",
     )
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="user")
     login_activity: Mapped[list["UserLoginActivity"]] = relationship(
-        "UserLoginActivity", back_populates="user"
+        "UserLoginActivity", back_populates="user",
     )
     activity_logs: Mapped[list["UserActivityLog"]] = relationship(
-        "UserActivityLog", back_populates="user"
+        "UserActivityLog", back_populates="user",
     )
     security_alerts: Mapped[list["SecurityAlert"]] = relationship(
-        "SecurityAlert", back_populates="user"
+        "SecurityAlert", back_populates="user",
     )
 
 
@@ -385,15 +384,15 @@ class UserLogin(Base):
     login_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
     issued_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     refresh_token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     refresh_token_expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+        DateTime(timezone=True), nullable=False,
     )
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_refreshed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
+        DateTime(timezone=True), nullable=True,
     )
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -424,7 +423,7 @@ class ArchivedUser(Base):
     archived_user_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     archived_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=sa.func.now())
 
@@ -439,15 +438,15 @@ class Subscription(Base):
 
     subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     subscription_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     subscription_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     plan_type: Mapped[PlanTypeEnum] = mapped_column(
-        Enum(PlanTypeEnum, name="plan_type_enum"), nullable=False
+        Enum(PlanTypeEnum, name="plan_type_enum"), nullable=False,
     )
     payment_status: Mapped[PaymentStatusEnum] = mapped_column(
-        Enum(PaymentStatusEnum, name="payment_status_enum"), nullable=False
+        Enum(PaymentStatusEnum, name="payment_status_enum"), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="subscriptions")
@@ -463,23 +462,23 @@ class BillingPlan(Base):
     plan_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     billing_cycle: Mapped[BillingCycleEnum] = mapped_column(
-        Enum(BillingCycleEnum, name="billing_cycle_enum"), nullable=False
+        Enum(BillingCycleEnum, name="billing_cycle_enum"), nullable=False,
     )
     max_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_storage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     support_level: Mapped[SupportLevelEnum | None] = mapped_column(
-        Enum(SupportLevelEnum, name="support_level_enum"), nullable=True
+        Enum(SupportLevelEnum, name="support_level_enum"), nullable=True,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="plan")
     subscription_history: Mapped[list["SubscriptionHistory"]] = relationship(
-        "SubscriptionHistory", back_populates="plan"
+        "SubscriptionHistory", back_populates="plan",
     )
 
 
@@ -493,22 +492,22 @@ class Invoice(Base):
     plan_id: Mapped[int] = mapped_column(ForeignKey("billing_plans.plan_id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     billing_cycle: Mapped[BillingCycleEnum] = mapped_column(
-        Enum(BillingCycleEnum, name="invoice_billing_cycle_enum"), nullable=False
+        Enum(BillingCycleEnum, name="invoice_billing_cycle_enum"), nullable=False,
     )
     invoice_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[InvoiceStatusEnum] = mapped_column(
-        Enum(InvoiceStatusEnum, name="invoice_status_enum"), nullable=False
+        Enum(InvoiceStatusEnum, name="invoice_status_enum"), nullable=False,
     )
     payment_method: Mapped[PaymentMethodEnum | None] = mapped_column(
-        Enum(PaymentMethodEnum, name="payment_method_enum"), nullable=True
+        Enum(PaymentMethodEnum, name="payment_method_enum"), nullable=True,
     )
     payment_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="invoices")
@@ -526,7 +525,7 @@ class UsageMetric(Base):
     active_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
     storage_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="usage_metrics")
@@ -547,10 +546,10 @@ class SubscriptionHistory(Base):
         nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization")
@@ -573,16 +572,16 @@ class SupportTicket(Base):
     subject: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[SupportPriorityEnum] = mapped_column(
-        Enum(SupportPriorityEnum, name="support_priority_enum"), nullable=False
+        Enum(SupportPriorityEnum, name="support_priority_enum"), nullable=False,
     )
     status: Mapped[TicketStatusEnum] = mapped_column(
-        Enum(TicketStatusEnum, name="ticket_status_enum"), nullable=False
+        Enum(TicketStatusEnum, name="ticket_status_enum"), nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     user: Mapped[User] = relationship("User", back_populates="support_tickets")
@@ -603,7 +602,7 @@ class SupportTicketComment(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
     comment: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
 
     ticket: Mapped[SupportTicket] = relationship("SupportTicket", back_populates="comments")
@@ -617,7 +616,7 @@ class SystemHealthLog(Base):
 
     log_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     server_uptime: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     active_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -636,7 +635,7 @@ class SystemAlert(Base):
 
     alert_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     organization_id: Mapped[int] = mapped_column(
-        ForeignKey("organization.organization_id"), nullable=False
+        ForeignKey("organization.organization_id"), nullable=False,
     )
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
     alert_message: Mapped[str] = mapped_column(Text, nullable=False)
@@ -661,7 +660,7 @@ class AuditLog(Base):
     new_data: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     action_timestamp: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
 
     user: Mapped[User] = relationship("User", back_populates="audit_logs")
@@ -680,7 +679,7 @@ class UserLoginActivity(Base):
     login_success: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
     failed_attempt_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     login_method: Mapped[LoginMethodEnum] = mapped_column(
-        Enum(LoginMethodEnum, name="login_method_enum"), nullable=False
+        Enum(LoginMethodEnum, name="login_method_enum"), nullable=False,
     )
     login_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
@@ -697,7 +696,7 @@ class UserActivityLog(Base):
     activity_type: Mapped[str] = mapped_column(String(100), nullable=False)
     activity_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     activity_timestamp: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
 
@@ -714,10 +713,10 @@ class SecurityAlert(Base):
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
     alert_message: Mapped[str] = mapped_column(Text, nullable=False)
     alert_status: Mapped[AlertStatusEnum] = mapped_column(
-        Enum(AlertStatusEnum, name="security_alert_status_enum"), nullable=False
+        Enum(AlertStatusEnum, name="security_alert_status_enum"), nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -732,17 +731,17 @@ class SsoProvider(Base):
     provider_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
     provider_name: Mapped[SsoProviderName] = mapped_column(
-        Enum(SsoProviderName, name="sso_provider_name_enum"), nullable=False
+        Enum(SsoProviderName, name="sso_provider_name_enum"), nullable=False,
     )
     provider_uid: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
     )
     updated_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+        DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
 
     user: Mapped[User] = relationship("User", back_populates="sso_accounts")

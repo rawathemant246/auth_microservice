@@ -7,11 +7,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from loguru import logger
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth_microservice.core.security import create_access_token, hash_password, verify_password
-from auth_microservice.observability import ACTIVE_SESSIONS_GAUGE
+from auth_microservice.core.security import (
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 from auth_microservice.db.models.oltp import (
     ContactInformation,
     LoginMethodEnum,
@@ -23,8 +27,8 @@ from auth_microservice.db.models.oltp import (
     UserLoginActivity,
     UserStatusEnum,
 )
+from auth_microservice.observability import ACTIVE_SESSIONS_GAUGE
 from auth_microservice.settings import settings
-from redis.asyncio import Redis
 
 
 class AuthService:
@@ -40,13 +44,13 @@ class AuthService:
         username = payload["username"]
 
         existing_user = await self._session.execute(
-            select(User).where(User.username == username)
+            select(User).where(User.username == username),
         )
         if existing_user.scalar_one_or_none() is not None:
             raise ValueError("username_already_exists")
 
         existing_email = await self._session.execute(
-            select(ContactInformation).where(ContactInformation.email_id == contact_payload["email"])
+            select(ContactInformation).where(ContactInformation.email_id == contact_payload["email"]),
         )
         if existing_email.scalar_one_or_none() is not None:
             raise ValueError("email_already_exists")
@@ -188,7 +192,7 @@ class AuthService:
 
         session.revoked_at = datetime.now(timezone.utc)
         organization_id = await self._session.scalar(
-            select(User.organization_id).where(User.user_id == session.user_id)
+            select(User.organization_id).where(User.user_id == session.user_id),
         )
         await self._session.flush()
         if organization_id is not None:
@@ -217,7 +221,7 @@ class AuthService:
         new_refresh_token = secrets.token_urlsafe(48)
         session.refresh_token_hash = hash_password(new_refresh_token)
         session.refresh_token_expires_at = now + timedelta(
-            minutes=settings.jwt_refresh_token_expires_minutes
+            minutes=settings.jwt_refresh_token_expires_minutes,
         )
         session.last_refreshed_at = now
         if ip_address:
@@ -425,7 +429,7 @@ class AuthService:
             raise ValueError("missing_email")
 
         existing_provider = await self._session.execute(
-            select(SsoProvider).where(SsoProvider.provider_uid == provider_uid)
+            select(SsoProvider).where(SsoProvider.provider_uid == provider_uid),
         )
         provider = existing_provider.scalar_one_or_none()
         if provider is not None:
@@ -437,7 +441,7 @@ class AuthService:
         existing_email = await self._session.execute(
             select(ContactInformation, User)
             .join(User, ContactInformation.user_id == User.user_id)
-            .where(ContactInformation.email_id == email)
+            .where(ContactInformation.email_id == email),
         )
         row = existing_email.first()
         if row is not None:

@@ -6,20 +6,27 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.db.models.oltp import SupportTicket, SupportTicketComment, TicketStatusEnum, User
+from auth_microservice.db.models.oltp import (
+    SupportTicket,
+    SupportTicketComment,
+    TicketStatusEnum,
+    User,
+)
 from auth_microservice.services.support import SupportService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.support.schemas import (
     SupportTicketCommentCreateRequest,
     SupportTicketCommentResponse,
     SupportTicketCommentsListResponse,
     SupportTicketCreateRequest,
     SupportTicketResponse,
-    SupportTicketUpdateRequest,
     SupportTicketsListResponse,
+    SupportTicketUpdateRequest,
     SupportTicketUser,
 )
-
 
 support_router = APIRouter(prefix="/v1/support", tags=["support"])
 
@@ -95,7 +102,7 @@ async def list_tickets(
         status=status_filter,
     )
     return SupportTicketsListResponse(
-        items=[_serialize_ticket(ticket, user) for ticket, user in tickets]
+        items=[_serialize_ticket(ticket, user) for ticket, user in tickets],
     )
 
 
@@ -107,7 +114,7 @@ async def get_ticket(
 ) -> SupportTicketResponse:
     service = SupportService(session)
     ticket, user = _ensure_ticket(
-        await service.get_ticket(ticket_id, organization_id=principal.organization_id)
+        await service.get_ticket(ticket_id, organization_id=principal.organization_id),
     )
     return _serialize_ticket(ticket, user)
 
@@ -121,7 +128,7 @@ async def update_ticket(
 ) -> SupportTicketResponse:
     service = SupportService(session)
     ticket, user = _ensure_ticket(
-        await service.get_ticket(ticket_id, organization_id=principal.organization_id)
+        await service.get_ticket(ticket_id, organization_id=principal.organization_id),
     )
     updates = payload.model_dump(exclude_unset=True)
     ticket = await service.update_ticket(ticket, updates)
@@ -141,7 +148,7 @@ async def add_comment(
 ) -> SupportTicketCommentResponse:
     service = SupportService(session)
     ticket, _ = _ensure_ticket(
-        await service.get_ticket(ticket_id, organization_id=principal.organization_id)
+        await service.get_ticket(ticket_id, organization_id=principal.organization_id),
     )
     comment = await service.create_comment(
         ticket=ticket,
@@ -165,11 +172,11 @@ async def list_comments(
 ) -> SupportTicketCommentsListResponse:
     service = SupportService(session)
     _ensure_ticket(
-        await service.get_ticket(ticket_id, organization_id=principal.organization_id)
+        await service.get_ticket(ticket_id, organization_id=principal.organization_id),
     )
     comments = await service.list_comments(ticket_id, organization_id=principal.organization_id)
     return SupportTicketCommentsListResponse(
-        items=[_serialize_comment(comment, user) for comment, user in comments]
+        items=[_serialize_comment(comment, user) for comment, user in comments],
     )
 
 

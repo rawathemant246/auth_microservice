@@ -7,14 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.services.document_store import DocumentStoreService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.feedback.schemas import (
     FeedbackCreateRequest,
     FeedbackListResponse,
     FeedbackResponse,
     FeedbackUpdateRequest,
 )
-
 
 feedback_router = APIRouter(prefix="/v1", tags=["feedback"])
 
@@ -43,7 +45,7 @@ async def create_feedback(
     payload: FeedbackCreateRequest,
     request: Request,
     principal: AuthenticatedPrincipal = Depends(require_permission("feedback.create")),
-    session: AsyncSession = Depends(get_db_session),  # noqa: ARG001 - ensure dependency lifecycle
+    session: AsyncSession = Depends(get_db_session),  # - ensure dependency lifecycle
 ) -> FeedbackResponse:
     if payload.organization_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
@@ -64,7 +66,7 @@ async def list_feedback(
     organization_id: int,
     status_filter: str | None = None,
     principal: AuthenticatedPrincipal = Depends(require_permission("feedback.read")),
-    session: AsyncSession = Depends(get_db_session),  # noqa: ARG001
+    session: AsyncSession = Depends(get_db_session),
 ) -> FeedbackListResponse:
     if organization_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
@@ -83,7 +85,7 @@ async def update_feedback(
     payload: FeedbackUpdateRequest,
     request: Request,
     principal: AuthenticatedPrincipal = Depends(require_permission("feedback.update")),
-    session: AsyncSession = Depends(get_db_session),  # noqa: ARG001
+    session: AsyncSession = Depends(get_db_session),
 ) -> FeedbackResponse:
     document_store = _document_store(request)
     document = await document_store.update_feedback(feedback_id, payload.model_dump(exclude_unset=True))

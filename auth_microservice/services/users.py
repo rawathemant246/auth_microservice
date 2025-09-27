@@ -129,7 +129,7 @@ class UserService:
             select(func.count()).select_from(Role).where(
                 Role.role_id == role_id,
                 Role.organization_id == organization_id,
-            )
+            ),
         )
         if not exists:
             raise ValueError("role_not_in_organization")

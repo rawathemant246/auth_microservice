@@ -55,7 +55,7 @@ class SearchService:
                 or_(
                     SupportTicket.subject.ilike(pattern),
                     SupportTicket.description.ilike(pattern),
-                )
+                ),
             )
             .order_by(SupportTicket.created_at.desc())
             .limit(limit)
@@ -75,7 +75,7 @@ class SearchService:
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                     },
-                }
+                },
             )
         return items
 
@@ -95,7 +95,7 @@ class SearchService:
                 or_(
                     AuditLog.action_type.ilike(pattern),
                     AuditLog.action_description.ilike(pattern),
-                )
+                ),
             )
             .order_by(AuditLog.action_timestamp.desc())
             .limit(limit)
@@ -116,7 +116,7 @@ class SearchService:
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                     },
-                }
+                },
             )
         return items
 

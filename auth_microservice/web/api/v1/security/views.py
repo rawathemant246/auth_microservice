@@ -7,9 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import AlertStatusEnum, User
-from auth_microservice.services.security import SecurityService
 from auth_microservice.services.events import publish_security_event
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.services.security import SecurityService
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.security.schemas import (
     SecurityAlertResponse,
     SecurityAlertsResponse,

@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.services.document_store import DocumentStoreService
 from auth_microservice.services.search import SearchService
-from auth_microservice.web.api.dependencies import AuthenticatedPrincipal, require_permission
+from auth_microservice.web.api.dependencies import (
+    AuthenticatedPrincipal,
+    require_permission,
+)
 from auth_microservice.web.api.v1.search.schemas import SearchResponse
-
 
 search_router = APIRouter(prefix="/v1", tags=["search"])
 

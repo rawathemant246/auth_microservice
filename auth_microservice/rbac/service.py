@@ -7,13 +7,13 @@ from pathlib import Path
 
 import casbin
 from loguru import logger
+from redis.asyncio import Redis
+from redis.asyncio.connection import ConnectionPool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from auth_microservice.db.models.oltp import Permission, Role, RolePermission, User
 from auth_microservice.observability import RBAC_CACHE_HITS, RBAC_CACHE_MISSES
-from redis.asyncio import Redis
-from redis.asyncio.connection import ConnectionPool
 
 
 class RbacService:

@@ -5,9 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from casdoor import CasdoorSDK
-
 from auth_microservice.settings import settings
+from casdoor import CasdoorSDK
 
 
 class CasdoorService:

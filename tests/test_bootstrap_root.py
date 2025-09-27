@@ -1,5 +1,5 @@
-import sqlalchemy as sa
 import pytest
+import sqlalchemy as sa
 from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -18,7 +18,7 @@ async def _reset_bootstrap_state(engine: AsyncEngine | AsyncSession) -> None:
         "TRUNCATE TABLE "
         "role_permissions, user_login_activity, user_activity_logs, security_alerts, "
         "uuh_password_reset, uuh_user_login, uuh_contact_information, uuh_users, "
-        "uuh_roles, uuh_permission, organization RESTART IDENTITY CASCADE"
+        "uuh_roles, uuh_permission, organization RESTART IDENTITY CASCADE",
     )
     if isinstance(engine, AsyncSession):
         await engine.execute(truncate_stmt)
