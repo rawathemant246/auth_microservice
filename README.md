@@ -161,6 +161,34 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 
 > **Tip:** `docker compose down -v` tears down the stack and removes persisted Postgres/Mongo volumes.
 
+## Developer tooling
+
+### Environment files
+- `.env.example` contains a minimal set of secrets/connection strings required to run the stack locally.
+- `make env` will copy the example file to `.env` if one is not already present.
+- Update `BOOTSTRAP_SECRET`, `METRICS_INGEST_SECRET`, and `INTERNAL_API_SECRET` before exposing the service outside of a development environment.
+
+### Make targets
+
+| Command            | Description |
+|--------------------|-------------|
+| `make install`     | Install Poetry dependencies. |
+| `make lint`        | Run Ruff lint checks. |
+| `make format`      | Apply Black formatting and Ruff autofixes. |
+| `make typecheck`   | Execute mypy against `auth_microservice` and tests. |
+| `make test`        | Run the full pytest suite. |
+| `make check`       | Convenience target for lint + typecheck + tests. |
+| `make migrate`     | Apply Alembic migrations. |
+| `make run`         | Start the FastAPI application via `python -m auth_microservice`. |
+| `make superuser`   | Invoke the CLI bootstrap command (set `USERNAME`, `EMAIL`, `FIRST`, `LAST`, optional `PASSWORD`). |
+
+### Continuous integration
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs on pushes and pull requests against `main`. The pipeline:
+- Configures Python 3.12 with Poetry.
+- Starts Postgres, Redis, RabbitMQ, and MongoDB service containers for integration tests.
+- Copies `.env.example` into place, installs dependencies, then executes `make lint`, `make typecheck`, and `make test`.
+
 ### Services started by the compose stack
 
 | Service            | Container name                | Purpose                                    |
