@@ -68,7 +68,7 @@ jobs:
 
       - name: Configure Poetry
         run: |
-          poetry config virtualenvs.create false
+          poetry config virtualenvs.in-project true
 
       - name: Install dependencies
         run: |
