@@ -12,8 +12,10 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 - FastAPI-based REST API with JWT authentication and Google SSO via Casdoor.
 - Polyglot persistence: PostgreSQL for transactional data, MongoDB for organization settings.
 - Alembic migrations including seeded RBAC roles/permissions.
-- RBAC enforcement using pycasbin with policies pulled from Postgres.
-- Taskiq worker for background jobs with RabbitMQ and Redis integration.
+- RBAC enforcement using pycasbin with policies pulled from Postgres (Redis-backed decision cache).
+- CLI + API bootstrap flows that create the platform superuser and seed Casbin policies (`auth-microservice createsuperuser`).
+- Taskiq worker for background jobs with RabbitMQ and Redis integration (password reset tokens, feature flags, rate limits).
+- Domain events emitted to RabbitMQ for audit, security, email, and log ingestion pipelines.
 - Prometheus metrics endpoint and pre-configured Grafana dashboards.
 
 ## REST API
@@ -51,6 +53,17 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 
 ### Tenant Bootstrap
 - `POST /v1/bootstrap/organization` – Provision the first organization + admin (shared secret protected).
+
+#### Platform superuser CLI
+
+- Run `poetry run auth-microservice createsuperuser --username=...` to seed the platform-level super administrator.
+- The command provisions the `RootOrg`, `super_admin` role, default permissions, and reloads Casbin policies.
+- Supply any missing password via the interactive prompt or `--password`. Use `--no-input` to enforce non-interactive execution.
+
+#### Bootstrap security
+
+- Set `BOOTSTRAP_SECRET` (or `AUTH_MICROSERVICE_BOOTSTRAP_SECRET`) before starting the API; requests must include `X-Bootstrap-Secret`.
+- The endpoint auto-falls back to the platform bootstrap path when no organizations exist, ensuring a deterministic tenancy starting point.
 
 ### Billing
 - `GET /v1/billing/plans` – List all billing plans (`billing.plan.read`).
@@ -177,6 +190,20 @@ Grafana automatically discovers the Prometheus datasource configured in `deploy/
   - `POST /metrics/usage` → writes to `usage_metrics`.
 - Update `deploy/prometheus/prometheus.yml` if you change the API port or add additional scrape targets.
 
+### Redis & RabbitMQ responsibilities
+
+- **Redis**
+  - RBAC decision cache (`rbac:decision:*`) with short TTLs for repeat permission checks.
+  - Password reset tokens (`password_reset:token:*`, `password_reset:user:*`) and per-user rate limits (`password_reset:rate:*`).
+  - Feature flag storage (`feature_flags:{organization_id}`) consumed by `/v1/flags`.
+- **RabbitMQ exchanges** (see `auth_microservice/services/events.py`)
+  - `security.events` – security & auth lifecycle events (e.g., `auth.login`, `password.reset`).
+  - `audit.events` – administrative audit trail emissions.
+  - `email.events` – transactional email payloads such as password reset notifications.
+  - `logs.ingest` – high-volume log forwarding towards TSDB/warehouse sinks.
+
+Each exchange is declared on demand; queues/workers can bind to routing keys to react asynchronously.
+
 ### Admin panel APIs
 
 Administrative helpers exposed under `/admin` (all require `X-Internal-Secret`):
@@ -252,6 +279,11 @@ Or locally after installing dependencies with Poetry:
 ```bash
 pytest -vv
 ```
+
+Key integration suites now cover:
+- Redis-backed RBAC caching, feature flags, and password reset token workflows.
+- RabbitMQ event publishing for security/audit/email flows.
+- Bootstrap safeguards (CLI + API) for the initial superuser/organization.
 
 ---
 

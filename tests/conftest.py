@@ -152,6 +152,9 @@ class InMemoryDocumentStore:
 
 
 class StubRbacService:
+    async def reload_policies(self) -> None:  # noqa: D401 - simple stub
+        return None
+
     async def invalidate_cache(self) -> None:  # noqa: D401 - simple stub
         return None
 
@@ -368,6 +371,8 @@ def fastapi_app(
     application.dependency_overrides[get_db_session] = _get_db_session_override
     application.dependency_overrides[get_redis_pool] = lambda: fake_redis_pool
     application.dependency_overrides[get_rmq_channel_pool] = lambda: test_rmq_pool
+    application.state.redis_pool = fake_redis_pool
+    application.state.rmq_channel_pool = test_rmq_pool
     application.state.document_store = InMemoryDocumentStore()
     application.state.rbac_service = StubRbacService()
     return application

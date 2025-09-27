@@ -2,7 +2,7 @@ import sqlalchemy as sa
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from auth_microservice.cli import _create_superuser
 from auth_microservice.db.models.oltp import Organization, Role, User
@@ -13,15 +13,19 @@ def _bootstrap_headers(secret: str) -> dict[str, str]:
     return {"X-Bootstrap-Secret": secret}
 
 
-async def _reset_bootstrap_state(engine: AsyncEngine) -> None:
+async def _reset_bootstrap_state(engine: AsyncEngine | AsyncSession) -> None:
     truncate_stmt = sa.text(
         "TRUNCATE TABLE "
         "role_permissions, user_login_activity, user_activity_logs, security_alerts, "
         "uuh_password_reset, uuh_user_login, uuh_contact_information, uuh_users, "
         "uuh_roles, uuh_permission, organization RESTART IDENTITY CASCADE"
     )
-    async with engine.begin() as conn:
-        await conn.execute(truncate_stmt)
+    if isinstance(engine, AsyncSession):
+        await engine.execute(truncate_stmt)
+        await engine.flush()
+    else:
+        async with engine.begin() as conn:
+            await conn.execute(truncate_stmt)
 
 
 @pytest.fixture
@@ -41,8 +45,9 @@ async def test_bootstrap_endpoint_creates_root_when_empty(
     fastapi_app: FastAPI,
     bootstrap_secret: str,
     _engine: AsyncEngine,
+    dbsession: AsyncSession,
 ) -> None:
-    await _reset_bootstrap_state(_engine)
+    await _reset_bootstrap_state(dbsession)
 
     bootstrap_url = fastapi_app.url_path_for("bootstrap_organization")
     payload = {
@@ -64,20 +69,18 @@ async def test_bootstrap_endpoint_creates_root_when_empty(
     body = response.json()
     assert body["organization_name"] == "RootOrg"
 
-    session_factory = async_sessionmaker(_engine, expire_on_commit=False)
-    async with session_factory() as session:
-        organization = await session.get(Organization, body["organization_id"])
-        assert organization is not None
-        assert organization.organization_name == "RootOrg"
+    organization = await dbsession.get(Organization, body["organization_id"])
+    assert organization is not None
+    assert organization.organization_name == "RootOrg"
 
-        role = await session.get(Role, body["admin_role_id"])
-        assert role is not None
-        assert role.role_name == "super_admin"
+    role = await dbsession.get(Role, body["admin_role_id"])
+    assert role is not None
+    assert role.role_name == "super_admin"
 
-        user = await session.get(User, body["admin_user_id"])
-        assert user is not None
-        assert user.organization_id == organization.organization_id
-        assert user.role_id == role.role_id
+    user = await dbsession.get(User, body["admin_user_id"])
+    assert user is not None
+    assert user.organization_id == organization.organization_id
+    assert user.role_id == role.role_id
 
 
 @pytest.mark.anyio

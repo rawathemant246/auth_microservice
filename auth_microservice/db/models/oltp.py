@@ -489,7 +489,7 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     invoice_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    school_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
     plan_id: Mapped[int] = mapped_column(ForeignKey("billing_plans.plan_id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     billing_cycle: Mapped[BillingCycleEnum] = mapped_column(
@@ -521,7 +521,7 @@ class UsageMetric(Base):
     __tablename__ = "usage_metrics"
 
     metric_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    school_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
     metric_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     active_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
     storage_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -538,7 +538,7 @@ class SubscriptionHistory(Base):
     __tablename__ = "subscription_history"
 
     subscription_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    school_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
+    org_id: Mapped[int] = mapped_column(ForeignKey("organization.organization_id"), nullable=False)
     plan_id: Mapped[int] = mapped_column(ForeignKey("billing_plans.plan_id"), nullable=False)
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
