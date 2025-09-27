@@ -110,7 +110,7 @@ services:
       retries: 50
 
   rabbitmq-exporter:
-    image: prometheuscommunity/rabbitmq-exporter:v1.0.0
+    image: kbudde/rabbitmq-exporter:1.0.0
     environment:
       RABBIT_URL: "http://auth_microservice-rmq:15672"
       RABBIT_USER: "guest"
