@@ -11,6 +11,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from auth_microservice.db.base import Base
 
+# Ensure SQLAlchemy binds enum values ("active") instead of names ("ACTIVE").
+def enum_values(enum_cls: type[enum.Enum]) -> list[str]:
+    return [member.value for member in enum_cls]
+
 # region: Enumerations ------------------------------------------------------------------
 
 
@@ -187,7 +191,7 @@ class Organization(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=True)
     purchase_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     license_status: Mapped[LicenseStatusEnum] = mapped_column(
-        Enum(LicenseStatusEnum, name="license_status"),
+        Enum(LicenseStatusEnum, name="license_status", values_callable=enum_values),
         default=LicenseStatusEnum.ACTIVE,
         nullable=False,
     )
@@ -297,7 +301,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     date_of_birth: Mapped[str | None] = mapped_column(String(32), nullable=True)
     gender: Mapped[GenderEnum | None] = mapped_column(
-        Enum(GenderEnum, name="gender_enum"), nullable=True,
+        Enum(GenderEnum, name="gender_enum", values_callable=enum_values), nullable=True,
     )
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organization.organization_id"), nullable=False,
@@ -312,7 +316,7 @@ class User(Base):
         DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False,
     )
     status: Mapped[UserStatusEnum] = mapped_column(
-        Enum(UserStatusEnum, name="user_status_enum"),
+        Enum(UserStatusEnum, name="user_status_enum", values_callable=enum_values),
         default=UserStatusEnum.ACTIVE,
         nullable=False,
     )
@@ -443,10 +447,10 @@ class Subscription(Base):
     subscription_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     subscription_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     plan_type: Mapped[PlanTypeEnum] = mapped_column(
-        Enum(PlanTypeEnum, name="plan_type_enum"), nullable=False,
+        Enum(PlanTypeEnum, name="plan_type_enum", values_callable=enum_values), nullable=False,
     )
     payment_status: Mapped[PaymentStatusEnum] = mapped_column(
-        Enum(PaymentStatusEnum, name="payment_status_enum"), nullable=False,
+        Enum(PaymentStatusEnum, name="payment_status_enum", values_callable=enum_values), nullable=False,
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="subscriptions")
@@ -462,12 +466,12 @@ class BillingPlan(Base):
     plan_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     billing_cycle: Mapped[BillingCycleEnum] = mapped_column(
-        Enum(BillingCycleEnum, name="billing_cycle_enum"), nullable=False,
+        Enum(BillingCycleEnum, name="billing_cycle_enum", values_callable=enum_values), nullable=False,
     )
     max_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_storage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     support_level: Mapped[SupportLevelEnum | None] = mapped_column(
-        Enum(SupportLevelEnum, name="support_level_enum"), nullable=True,
+        Enum(SupportLevelEnum, name="support_level_enum", values_callable=enum_values), nullable=True,
     )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
@@ -492,15 +496,15 @@ class Invoice(Base):
     plan_id: Mapped[int] = mapped_column(ForeignKey("billing_plans.plan_id"), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     billing_cycle: Mapped[BillingCycleEnum] = mapped_column(
-        Enum(BillingCycleEnum, name="invoice_billing_cycle_enum"), nullable=False,
+        Enum(BillingCycleEnum, name="invoice_billing_cycle_enum", values_callable=enum_values), nullable=False,
     )
     invoice_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[InvoiceStatusEnum] = mapped_column(
-        Enum(InvoiceStatusEnum, name="invoice_status_enum"), nullable=False,
+        Enum(InvoiceStatusEnum, name="invoice_status_enum", values_callable=enum_values), nullable=False,
     )
     payment_method: Mapped[PaymentMethodEnum | None] = mapped_column(
-        Enum(PaymentMethodEnum, name="payment_method_enum"), nullable=True,
+        Enum(PaymentMethodEnum, name="payment_method_enum", values_callable=enum_values), nullable=True,
     )
     payment_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
@@ -542,7 +546,7 @@ class SubscriptionHistory(Base):
     start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[SubscriptionHistoryStatusEnum] = mapped_column(
-        Enum(SubscriptionHistoryStatusEnum, name="subscription_history_status_enum"),
+        Enum(SubscriptionHistoryStatusEnum, name="subscription_history_status_enum", values_callable=enum_values),
         nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
@@ -572,10 +576,10 @@ class SupportTicket(Base):
     subject: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[SupportPriorityEnum] = mapped_column(
-        Enum(SupportPriorityEnum, name="support_priority_enum"), nullable=False,
+        Enum(SupportPriorityEnum, name="support_priority_enum", values_callable=enum_values), nullable=False,
     )
     status: Mapped[TicketStatusEnum] = mapped_column(
-        Enum(TicketStatusEnum, name="ticket_status_enum"), nullable=False,
+        Enum(TicketStatusEnum, name="ticket_status_enum", values_callable=enum_values), nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
@@ -679,7 +683,7 @@ class UserLoginActivity(Base):
     login_success: Mapped[bool] = mapped_column(sa.Boolean, default=True, nullable=False)
     failed_attempt_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     login_method: Mapped[LoginMethodEnum] = mapped_column(
-        Enum(LoginMethodEnum, name="login_method_enum"), nullable=False,
+        Enum(LoginMethodEnum, name="login_method_enum", values_callable=enum_values), nullable=False,
     )
     login_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
@@ -713,7 +717,7 @@ class SecurityAlert(Base):
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
     alert_message: Mapped[str] = mapped_column(Text, nullable=False)
     alert_status: Mapped[AlertStatusEnum] = mapped_column(
-        Enum(AlertStatusEnum, name="security_alert_status_enum"), nullable=False,
+        Enum(AlertStatusEnum, name="security_alert_status_enum", values_callable=enum_values), nullable=False,
     )
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=sa.func.now(), nullable=False,
@@ -731,7 +735,7 @@ class SsoProvider(Base):
     provider_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
     provider_name: Mapped[SsoProviderName] = mapped_column(
-        Enum(SsoProviderName, name="sso_provider_name_enum"), nullable=False,
+        Enum(SsoProviderName, name="sso_provider_name_enum", values_callable=enum_values), nullable=False,
     )
     provider_uid: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
