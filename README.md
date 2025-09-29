@@ -56,9 +56,21 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 
 #### Platform superuser CLI
 
-- Run `poetry run auth-microservice createsuperuser --username=...` to seed the platform-level super administrator.
-- The command provisions the `RootOrg`, `super_admin` role, default permissions, and reloads Casbin policies.
-- Supply any missing password via the interactive prompt or `--password`. Use `--no-input` to enforce non-interactive execution.
+Provision the platform-wide root administrator once per environment right after migrations complete:
+
+1. Ensure the service can reach Postgres by exporting the usual `AUTH_MICROSERVICE_DB_*` variables (or reusing the `.env` file used by the API), then run `poetry run alembic upgrade head` so the schema and seed data exist.
+2. Execute the CLI with the required identity fields. You can omit `--password` to be prompted securely:
+   ```bash
+   poetry run auth-microservice createsuperuser \
+     --username root-admin \
+     --email root@example.com \
+     --first-name Root \
+     --last-name Admin
+   ```
+3. For CI/CD or other non-interactive runs, add `--password` alongside `--no-input` to fail fast if anything is missing.
+4. Prefer `make superuser USERNAME=... EMAIL=... FIRST=... LAST=... [PASSWORD=...]` when you already use the provided Makefile tooling.
+
+The command idempotently creates the `RootOrg`, assigns the `super_admin` role, seeds the default permissions, and reloads Casbin policies if they were already present.
 
 #### Bootstrap security
 
