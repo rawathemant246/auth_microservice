@@ -18,6 +18,47 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 - Domain events emitted to RabbitMQ for audit, security, email, and log ingestion pipelines.
 - Prometheus metrics endpoint and pre-configured Grafana dashboards.
 
+## Architecture
+
+High-level layout of the runtime stack and integration points used to deliver authentication and RBAC across the platform.
+
+```mermaid
+graph TD
+    subgraph Clients
+        Web[Product UIs / Mobile Apps]
+        Admin[Admin Console]
+        Services[Other Microservices]
+    end
+
+    Web -->|JWT / OAuth2 flows| API
+    Admin -->|REST + session tokens| API
+    Services -->|RBAC checks / token introspection| API
+
+    subgraph Auth Microservice Stack
+        API[FastAPI API]
+        Worker[TaskIQ Worker]
+    end
+
+    API -->|User data & policies| Postgres[(PostgreSQL)]
+    API -->|Org config documents| Mongo[(MongoDB)]
+    API -->|Session cache / rate limits| Redis[(Redis)]
+    API -->|Domain events| Rabbit[(RabbitMQ)]
+    API -->|Federated login| Casdoor[Casdoor]
+
+    Worker -->|Background jobs| Rabbit
+    Worker -->|Reads/Writes| Postgres
+    Worker -->|Reads/Writes| Mongo
+    Worker -->|Cache access| Redis
+
+    subgraph Observability
+        Prom[Prometheus]
+        Graf[Grafana]
+    end
+
+    API -->|Metrics| Prom
+    Prom --> Graf
+```
+
 ## REST API
 
 ### Monitoring & Utilities
@@ -58,17 +99,19 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 
 Provision the platform-wide root administrator once per environment right after migrations complete:
 
-1. Ensure the service can reach Postgres by exporting the usual `AUTH_MICROSERVICE_DB_*` variables (or reusing the `.env` file used by the API), then run `poetry run alembic upgrade head` so the schema and seed data exist.
-2. Execute the CLI with the required identity fields. You can omit `--password` to be prompted securely:
+1. Run the migrations inside Docker so the schema and seed data exist:
    ```bash
-   poetry run auth-microservice createsuperuser \
+   docker compose run --rm migrator
+   ```
+2. Launch the admin CLI in an ephemeral API container. You can omit `--password` to be prompted securely:
+   ```bash
+   docker compose run --rm api auth-microservice createsuperuser \
      --username root-admin \
      --email root@example.com \
      --first-name Root \
      --last-name Admin
    ```
-3. For CI/CD or other non-interactive runs, add `--password` alongside `--no-input` to fail fast if anything is missing.
-4. Prefer `make superuser USERNAME=... EMAIL=... FIRST=... LAST=... [PASSWORD=...]` when you already use the provided Makefile tooling.
+3. If the stack is already running, swap in `docker compose exec api` to reuse the live container; in CI/CD add `--password` plus `--no-input` so the command stays non-interactive.
 
 The command idempotently creates the `RootOrg`, assigns the `super_admin` role, seeds the default permissions, and reloads Casbin policies if they were already present.
 
