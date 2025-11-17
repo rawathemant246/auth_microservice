@@ -204,15 +204,16 @@ The command idempotently creates the `RootOrg`, assigns the `super_admin` role, 
    ```bash
    docker compose run --rm migrator
    ```
-4. Bring up the API, worker, and monitoring stack (Prometheus & Grafana):
+4. Bring up the API and worker:
    ```bash
-   docker compose up -d api taskiq-worker prometheus grafana
+   docker compose up -d api taskiq-worker
    ```
-5. Tail logs or inspect health:
+5. (Optional) Connect your external monitoring stack to scrape `http://localhost:8000/metrics/prometheus`.
+6. Tail logs or inspect health:
    ```bash
    docker compose logs -f api
    ```
-6. Open the interactive docs at [http://localhost:8000/api/docs](http://localhost:8000/api/docs).
+7. Open the interactive docs at [http://localhost:8000/api/docs](http://localhost:8000/api/docs).
 
 > **Tip:** `docker compose down -v` tears down the stack and removes persisted Postgres/Mongo volumes.
 
@@ -254,15 +255,12 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs on pushes and pull reque
 | `mongo`            | `auth_microservice-mongo`     | MongoDB 6 for organization documents       |
 | `redis`            | `auth_microservice-redis`     | Redis cache / Taskiq backend               |
 | `rmq`              | `auth_microservice-rmq`       | RabbitMQ broker                            |
-| `prometheus`       | `auth_microservice-prometheus`| Metrics collection (/metrics scrape)       |
-| `grafana`          | `auth_microservice-grafana`   | Pre-provisioned Prometheus datasource      |
+| (external)         | —                             | Bring your own Prometheus/Grafana to scrape `/metrics/prometheus` |
 
-### Observability dashboards
+### Observability
 
-- Prometheus UI: [http://localhost:9090](http://localhost:9090)
-- Grafana UI: [http://localhost:3000](http://localhost:3000) (default credentials `admin` / `admin`).
-
-Grafana automatically discovers the Prometheus datasource configured in `deploy/grafana/provisioning/datasources/datasource.yml`. Import any preferred FastAPI dashboards or create custom panels using the `Prometheus` datasource.
+- Metrics endpoint: `/metrics/prometheus` on the API container (port 8000). Point your shared monitoring stack here.
+- The bundled Prometheus/Grafana services were removed to defer monitoring to the central Monitoring & Alerting microservice.
 
 ### Metrics endpoint
 
@@ -300,14 +298,9 @@ Administrative helpers exposed under `/admin` (all require `X-Internal-Secret`):
 - Grafana auto-loads the `Auth Microservice Overview` dashboard from `deploy/grafana/dashboards/auth_microservice_overview.json`.
 - The dashboard appears under the *General* folder—duplicate it before customizing to keep the JSON source intact.
 
-### Alerting rules
+### Alerting
 
-- Prometheus evaluates alert definitions in `deploy/prometheus/alerts.yml` (API down, high error rate, high latency).
-- Extend the Prometheus configuration to wire these alerts into Alertmanager, Slack, PagerDuty, etc.
-- After editing dashboards or alert rules, refresh the monitoring services:
-  ```bash
-  docker compose up -d prometheus grafana
-  ```
+Use your central monitoring stack to add alerts (e.g., API down, 5xx rate, latency) based on the scraped metrics.
 
 
 
