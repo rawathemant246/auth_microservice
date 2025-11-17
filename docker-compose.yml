@@ -84,13 +84,11 @@ services:
         condition: service_healthy
 
   redis:
-    image: bitnami/redis:6.2.5
+    image: redis:6.2-alpine
     hostname: "auth_microservice-redis"
     restart: always
-    environment:
-      ALLOW_EMPTY_PASSWORD: "yes"
     healthcheck:
-      test: redis-cli ping
+      test: ["CMD", "redis-cli", "ping"]
       interval: 1s
       timeout: 3s
       retries: 50
