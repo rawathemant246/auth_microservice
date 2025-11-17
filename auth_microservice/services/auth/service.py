@@ -231,9 +231,8 @@ class AuthService:
 
         await self._session.flush()
 
-        user = session.user
-        if user is None:
-            user = await self._session.get(User, session.user_id)
+        # Avoid lazy-loading the relationship (which triggers sync I/O in async contexts)
+        user = await self._session.get(User, session.user_id)
         if user is None:
             raise ValueError("user_not_found")
 

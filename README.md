@@ -16,7 +16,7 @@ Polyglot persistence FastAPI service that powers authentication, Google SSO, and
 - CLI + API bootstrap flows that create the platform superuser and seed Casbin policies (`auth-microservice createsuperuser`).
 - Taskiq worker for background jobs with RabbitMQ and Redis integration (password reset tokens, feature flags, rate limits).
 - Domain events emitted to RabbitMQ for audit, security, email, and log ingestion pipelines.
-- Prometheus metrics endpoint and pre-configured Grafana dashboards.
+- Prometheus metrics endpoint for external scraping.
 
 ## Architecture
 
@@ -260,16 +260,11 @@ GitHub Actions workflow `.github/workflows/ci.yml` runs on pushes and pull reque
 ### Observability
 
 - Metrics endpoint: `/metrics/prometheus` on the API container (port 8000). Point your shared monitoring stack here.
-- The bundled Prometheus/Grafana services were removed to defer monitoring to the central Monitoring & Alerting microservice.
+- The bundled Prometheus/Grafana services were removed; all monitoring is external now.
 
 ### Metrics endpoint
 
-- Prometheus scrapes metrics from `GET /metrics/prometheus` (already configured in the bundled Prometheus).
-- Metrics ingestion endpoints (all require the shared `X-Internal-Secret` header or `METRICS_INGEST_SECRET`):
-  - `POST /metrics/system-health` → writes to `system_health_logs`.
-  - `POST /metrics/system-alerts` → writes to `system_alerts`.
-  - `POST /metrics/usage` → writes to `usage_metrics`.
-- Update `deploy/prometheus/prometheus.yml` if you change the API port or add additional scrape targets.
+- Prometheus scrapes metrics from `GET /metrics/prometheus`. No bundled scraping configuration is included; point your external stack here.
 
 ### Redis & RabbitMQ responsibilities
 
@@ -315,7 +310,7 @@ All configuration is driven through the `.env` file (autoloaded by docker-compos
 | `AUTH_MICROSERVICE_JWT_SECRET_KEY` / `USERS_SECRET` | Secrets for issuing/validating access tokens. Change for production. |
 | `AUTH_MICROSERVICE_CASDOOR_*` | Casdoor endpoint and client credentials for Google SSO. |
 | `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` | Override Grafana's admin credentials (defaults to `admin`/`admin`). |
-| `AUTH_MICROSERVICE_METRICS_INGEST_SECRET` | Shared secret required for `/api/metrics/*` POST ingestion endpoints. |
+| `AUTH_MICROSERVICE_METRICS_INGEST_SECRET` | (Legacy) Previously used for metrics ingestion; not required for scraping. |
 | `AUTH_MICROSERVICE_INTERNAL_API_SECRET` | Shared secret required for `/api/admin/*` and `/internal/*` maintenance endpoints. |
 
 Update these values before deploying to any shared environment. Casdoor itself is not part of this compose stack—you must supply credentials for your hosted Casdoor instance.

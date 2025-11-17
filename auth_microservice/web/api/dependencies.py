@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import Depends, Header, HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +16,10 @@ from auth_microservice.core.security import decode_token
 from auth_microservice.db.dependencies import get_db_session
 from auth_microservice.db.models.oltp import User
 from auth_microservice.services.auth.service import AuthService
+
+
+logger = logging.getLogger(__name__)
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @dataclass
@@ -31,20 +37,24 @@ class AuthenticatedPrincipal:
 
 
 async def get_current_principal(
-    authorization: str | None = Header(default=None, alias="Authorization"),
+    credentials: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
     session: AsyncSession = Depends(get_db_session),
 ) -> AuthenticatedPrincipal:
     """Resolve the bearer token into a user and active session."""
 
-    if not authorization:
+    if not credentials or not credentials.credentials:
+        logger.warning("auth.missing_authorization_header")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="not_authenticated")
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
+    token = credentials.credentials
+    scheme = credentials.scheme
+    if scheme.lower() != "bearer":
+        logger.warning("auth.invalid_authorization_scheme", scheme=scheme)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_authorization_header")
 
     try:
         payload = decode_token(token)
     except JWTError as exc:  # - intentionally masking token parsing issues
+        logger.warning("auth.invalid_token", error=str(exc))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token") from exc
 
     subject = payload.get("sub")
