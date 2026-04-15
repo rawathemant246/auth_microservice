@@ -49,6 +49,8 @@ api_router.include_router(settings.views.router)
 api_router.include_router(metrics.router)
 api_router.include_router(admin.router)
 api_router.include_router(internal.router)
+from auth_microservice.web.api.internal import bulk_users
+api_router.include_router(bulk_users.router)
 api_router.include_router(docs.router)
 api_router.include_router(echo.router, prefix="/echo", tags=["echo"])
 api_router.include_router(redis.router, prefix="/redis", tags=["redis"])

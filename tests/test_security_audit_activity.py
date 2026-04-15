@@ -10,6 +10,7 @@ from auth_microservice.db.models.oltp import (
     AuditLog,
     LoginMethodEnum,
     SecurityAlert,
+    SecurityAlertTypeEnum,
     UserActivityLog,
     UserLoginActivity,
 )
@@ -79,7 +80,7 @@ async def test_security_audit_activity_endpoints(
 
     alert = SecurityAlert(
         user_id=user_id,
-        alert_type="unusual_login",
+        alert_type=SecurityAlertTypeEnum.UNUSUAL_ACTIVITY,
         alert_message="Multiple failed attempts detected",
         alert_status=AlertStatusEnum.OPEN,
     )
@@ -124,7 +125,7 @@ async def test_security_audit_activity_endpoints(
     assert alerts_response.status_code == 200
     alerts_payload = alerts_response.json()
     assert len(alerts_payload["items"]) == 1
-    assert alerts_payload["items"][0]["alert_type"] == "unusual_login"
+    assert alerts_payload["items"][0]["alert_type"] == "unusual_activity"
 
     alert_id = alerts_payload["items"][0]["alert_id"]
     update_url = fastapi_app.url_path_for("update_security_alert", alert_id=str(alert_id))

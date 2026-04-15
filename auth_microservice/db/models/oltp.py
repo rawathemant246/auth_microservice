@@ -169,6 +169,15 @@ class SupportPriorityEnum(str, enum.Enum):
     URGENT = "urgent"
 
 
+class SecurityAlertTypeEnum(str, enum.Enum):
+    """Types of security alerts."""
+
+    FAILED_LOGIN = "failed_login"
+    UNUSUAL_ACTIVITY = "unusual_activity"
+    SUSPICIOUS_IP = "suspicious_ip"
+    MULTIPLE_LOGINS = "multiple_logins"
+
+
 class SsoProviderName(str, enum.Enum):
     """Supported SSO providers."""
 
@@ -714,7 +723,9 @@ class SecurityAlert(Base):
 
     alert_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("uuh_users.user_id"), nullable=False)
-    alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    alert_type: Mapped[SecurityAlertTypeEnum] = mapped_column(
+        Enum(SecurityAlertTypeEnum, name="security_alert_type_enum", values_callable=enum_values), nullable=False,
+    )
     alert_message: Mapped[str] = mapped_column(Text, nullable=False)
     alert_status: Mapped[AlertStatusEnum] = mapped_column(
         Enum(AlertStatusEnum, name="security_alert_status_enum", values_callable=enum_values), nullable=False,
