@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
 
 from auth_microservice.db.models.oltp import UserStatusEnum
 
@@ -65,6 +66,21 @@ class ForgotPasswordResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError("Password must contain at least one special character")
+        return v
 
 
 class ResetPasswordResponse(BaseModel):
