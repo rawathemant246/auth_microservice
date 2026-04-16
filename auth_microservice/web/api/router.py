@@ -48,6 +48,12 @@ api_router.include_router(rbac.views.router)
 api_router.include_router(settings.views.router)
 api_router.include_router(metrics.router)
 api_router.include_router(admin.router)
+from auth_microservice.web.api.admin import stats as admin_stats
+api_router.include_router(admin_stats.router)
+from auth_microservice.web.api.admin import cross_org as admin_cross_org
+api_router.include_router(admin_cross_org.router)
+from auth_microservice.web.api.admin import platform_settings as admin_platform_settings
+api_router.include_router(admin_platform_settings.router)
 api_router.include_router(internal.router)
 from auth_microservice.web.api.internal import bulk_users
 api_router.include_router(bulk_users.router)
