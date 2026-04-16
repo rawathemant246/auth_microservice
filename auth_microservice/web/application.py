@@ -1,4 +1,5 @@
 import logging
+import os
 from importlib import metadata
 from pathlib import Path
 
@@ -16,6 +17,13 @@ from auth_microservice.web.api.router import api_router
 from auth_microservice.web.lifespan import lifespan_setup
 
 APP_ROOT = Path(__file__).parent.parent
+
+_is_prod = os.environ.get("AUTH_MICROSERVICE_ENVIRONMENT", "development") == "production"
+
+# CRITICAL: Refuse to start with default JWT secret in production.
+if _is_prod:
+    if settings.jwt_secret_key in ("change-me", "replace-with-strong-secret-min-32-chars", ""):
+        raise RuntimeError("JWT secret must be changed from default in production!")
 
 
 def get_app() -> FastAPI:
@@ -50,7 +58,7 @@ def get_app() -> FastAPI:
         lifespan=lifespan_setup,
         docs_url=None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url=None if _is_prod else "/api/openapi.json",
         default_response_class=UJSONResponse,
     )
 

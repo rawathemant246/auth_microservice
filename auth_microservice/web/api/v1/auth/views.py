@@ -57,6 +57,26 @@ def _get_user_agent(request: Request) -> str | None:
     return request.headers.get("user-agent")
 
 
+async def _check_login_rate_limit(
+    request: Request,
+    redis_pool: ConnectionPool = Depends(get_redis_pool),
+) -> None:
+    """Rate limit login attempts: max 10 per IP per 5 minutes."""
+    redis = Redis(connection_pool=redis_pool)
+    ip = request.client.host if request.client else "unknown"
+    key = f"login_rate_limit:{ip}"
+
+    count = await redis.incr(key)
+    if count == 1:
+        await redis.expire(key, 300)  # 5 minute window
+
+    if count > 10:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Try again in 5 minutes.",
+        )
+
+
 async def _resolve_email(
     session: AsyncSession,
     user_id: int,
@@ -123,6 +143,7 @@ async def login(
     payload: LoginRequest,
     request: Request,
     session: AsyncSession = Depends(get_db_session),
+    _rate_limit: None = Depends(_check_login_rate_limit),
 ) -> LoginResponse:
     auth_service = AuthService(session)
     try:
