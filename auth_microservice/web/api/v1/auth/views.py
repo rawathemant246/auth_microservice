@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth_microservice.db.dependencies import get_db_session
-from auth_microservice.db.models.oltp import ContactInformation, SsoProviderName, User
+from auth_microservice.db.models.oltp import ContactInformation, SsoProvider, SsoProviderName, User
 from auth_microservice.services.auth.service import AuthService
 from auth_microservice.services.events import (
     publish_email_event,
@@ -265,7 +265,7 @@ async def reset_password(
     auth_service = AuthService(session)
     try:
         redis = Redis(connection_pool=redis_pool)
-        await auth_service.reset_password(payload.token, payload.new_password, redis=redis)
+        await auth_service.reset_password(payload.token, payload.new_password, email=payload.email, redis=redis)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     await publish_security_event(

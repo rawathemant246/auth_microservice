@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import secrets
 import string
 
@@ -31,7 +32,7 @@ router = APIRouter(prefix="/internal/v1", tags=["internal"])
 def _verify_internal_secret(request: Request) -> None:
     secret = request.headers.get("X-Internal-Secret")
     expected = settings.internal_api_secret
-    if not expected or secret != expected:
+    if not expected or not secret or not hmac.compare_digest(secret, expected):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="invalid_internal_secret",

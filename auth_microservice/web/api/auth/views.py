@@ -55,6 +55,10 @@ async def register_user(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="legacy_register_disabled. Use POST /api/v1/orgs/{org_id}/users instead.",
+    )
     service = AuthService(session)
     payload_data = payload.model_dump()
     try:
@@ -77,6 +81,10 @@ async def login_user(
     payload: UserLoginRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> TokenResponse:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="legacy_login_disabled. Use POST /api/v1/auth/login instead.",
+    )
     service = AuthService(session)
     try:
         user, email = await service.authenticate_user(payload.username, payload.password)
@@ -119,6 +127,10 @@ async def google_sso_callback(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> GoogleSsoCallbackResponse:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="legacy_sso_disabled. Use /api/v1/auth/sso/* endpoints instead.",
+    )
     organization_id = _extract_org_from_state(payload.state)
     casdoor_service = _get_casdoor_service(request)
     auth_service = AuthService(session)

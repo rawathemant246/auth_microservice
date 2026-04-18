@@ -155,7 +155,7 @@ async def test_billing_flow(
     assert update_subscription_response.json()["payment_status"] == PaymentStatusEnum.OVERDUE.value
 
     invoice = Invoice(
-        school_id=organization_id,
+        org_id=organization_id,
         plan_id=plan_id,
         amount=Decimal("49.99"),
         billing_cycle=BillingCycleEnum.MONTHLY,

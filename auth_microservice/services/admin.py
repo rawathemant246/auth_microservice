@@ -77,7 +77,7 @@ class AdminService:
     async def _collect_latest_invoices(self, organization_id: int) -> list[dict[str, Any]]:
         stmt: Select[Invoice] = (
             select(Invoice)
-            .where(Invoice.school_id == organization_id)
+            .where(Invoice.org_id == organization_id)
             .order_by(Invoice.invoice_date.desc().nullslast(), Invoice.invoice_id.desc())
             .limit(5)
         )

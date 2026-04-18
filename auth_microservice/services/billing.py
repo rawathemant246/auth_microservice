@@ -195,7 +195,7 @@ class BillingService:
                 end_dt = datetime.combine(end_date, time.min)
 
         history = SubscriptionHistory(
-            school_id=organization_id,
+            org_id=organization_id,
             plan_id=plan_id,
             start_date=start_dt,
             end_date=end_dt,
@@ -209,7 +209,7 @@ class BillingService:
     async def list_invoices(self, organization_id: int) -> list[Invoice]:
         stmt = (
             select(Invoice)
-            .where(Invoice.school_id == organization_id)
+            .where(Invoice.org_id == organization_id)
             .order_by(Invoice.invoice_date.desc().nullslast(), Invoice.invoice_id.desc())
         )
         result = await self._session.execute(stmt)

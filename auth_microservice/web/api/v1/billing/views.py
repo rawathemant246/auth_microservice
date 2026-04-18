@@ -220,7 +220,7 @@ async def get_invoice(
     invoice = await BillingService(session).get_invoice(invoice_id)
     if invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invoice_not_found")
-    if principal.organization_id != invoice.school_id:
+    if principal.organization_id != invoice.org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
     return _serialize_invoice(invoice)
 
@@ -236,7 +236,7 @@ async def update_invoice(
     invoice = await service.get_invoice(invoice_id)
     if invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="invoice_not_found")
-    if invoice.school_id != principal.organization_id:
+    if invoice.org_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
 
     updates = payload.model_dump(exclude_unset=True)
