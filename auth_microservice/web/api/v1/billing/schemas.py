@@ -91,7 +91,7 @@ class InvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     invoice_id: int
-    school_id: int
+    org_id: int
     plan_id: int
     amount: Decimal
     billing_cycle: BillingCycleEnum

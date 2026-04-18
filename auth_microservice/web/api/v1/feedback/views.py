@@ -88,12 +88,13 @@ async def update_feedback(
     session: AsyncSession = Depends(get_db_session),
 ) -> FeedbackResponse:
     document_store = _document_store(request)
-    document = await document_store.update_feedback(feedback_id, payload.model_dump(exclude_unset=True))
+    document = await document_store.get_feedback(feedback_id)
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="feedback_not_found")
     if document["organization_id"] != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="forbidden")
-    return _normalize_feedback(document)
+    updated = await document_store.update_feedback(feedback_id, payload.model_dump(exclude_unset=True))
+    return _normalize_feedback(updated)
 
 
 __all__ = ["feedback_router"]
