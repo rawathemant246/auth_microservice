@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -109,6 +110,13 @@ class DocumentStoreService:
         documents = await cursor.to_list(length=None)
         return [self._normalize_feedback(doc) for doc in documents]
 
+    async def get_feedback(self, feedback_id: str) -> dict[str, Any] | None:
+        """Fetch a single feedback document by its feedback_id."""
+        document = await self._db.user_feedback.find_one({"feedback_id": feedback_id})
+        if document is None:
+            return None
+        return self._normalize_feedback(document)
+
     async def update_feedback(
         self,
         feedback_id: str,
@@ -131,7 +139,7 @@ class DocumentStoreService:
         query: str,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        regex = {"$regex": query, "$options": "i"}
+        regex = {"$regex": re.escape(query), "$options": "i"}
         cursor = self._db.user_feedback.find(
             {
                 "organization_id": organization_id,

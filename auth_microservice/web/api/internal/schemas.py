@@ -38,3 +38,17 @@ class BulkUserCreateResponse(BaseModel):
     failed: int
     errors: list[BulkUserErrorEntry]
     users: list[BulkUserCreatedEntry]
+
+
+class UserPermissionsResponse(BaseModel):
+    """Effective permissions for one user in one organization.
+
+    Consumed by lms-backend, which caches the result briefly and authorizes
+    locally against it rather than calling back on every request.
+    """
+
+    user_id: int
+    organization_id: int
+    role_id: Optional[int] = None
+    role_name: Optional[str] = None
+    permissions: list[str]

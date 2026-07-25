@@ -62,7 +62,7 @@ class MetricsService:
         """Persist an organisation usage metric snapshot."""
 
         entry = UsageMetric(
-            school_id=payload["organization_id"],
+            org_id=payload["organization_id"],
             metric_date=_ensure_aware(payload.get("metric_date")) or datetime.now(timezone.utc),
             active_users=payload.get("active_users"),
             storage_used=payload.get("storage_used"),

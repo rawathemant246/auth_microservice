@@ -87,10 +87,22 @@ class AuthService:
         *,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> tuple[User, str]:
-        """Authenticate user by username/password and return user plus primary email."""
+    ) -> tuple[User, str | None]:
+        """Authenticate user by username/password and return user plus primary email.
 
-        query = select(User, ContactInformation.email_id).join(ContactInformation, User.user_id == ContactInformation.user_id)
+        The contact join must be an outer join: contact details are optional on a
+        user. As an inner join this silently made every account with no email and
+        no phone impossible to authenticate — the row simply did not come back, so
+        a valid password was indistinguishable from an unknown username. That hit
+        CSV-imported students hardest, since most have neither.
+
+        Email stays optional the whole way down: issue_token only adds the claim
+        when present, and both create_session and UserProfileResponse accept None.
+        """
+
+        query = select(User, ContactInformation.email_id).outerjoin(
+            ContactInformation, User.user_id == ContactInformation.user_id
+        )
         query = query.where(User.username == username)
         result = await self._session.execute(query)
         row = result.first()
@@ -310,7 +322,7 @@ class AuthService:
 
         reset_entry = PasswordReset(
             user_id=user.user_id,
-            reset_token=token,
+            reset_token=hash_password(token),
             expires_at=expires,
             token_used=False,
         )
@@ -324,6 +336,7 @@ class AuthService:
         token: str,
         new_password: str,
         *,
+        email: str | None = None,
         redis: Redis | None = None,
     ) -> User:
         """Reset password for token if valid."""
@@ -341,20 +354,34 @@ class AuthService:
             pipeline.delete(f"password_reset:user:{user.user_id}")
             await pipeline.execute()
         else:
-            stmt = select(PasswordReset).where(PasswordReset.reset_token == token)
+            if not email:
+                raise ValueError("email_required")
+            # Look up user by email first
+            user_stmt = (
+                select(User)
+                .join(ContactInformation, ContactInformation.user_id == User.user_id)
+                .where(ContactInformation.email_id == email)
+            )
+            user_result = await self._session.execute(user_stmt)
+            user = user_result.scalar_one_or_none()
+            if user is None:
+                raise ValueError("invalid_or_expired_token")
+
+            # Find the latest valid password reset entry for this user and verify hash
+            stmt = (
+                select(PasswordReset)
+                .where(
+                    PasswordReset.user_id == user.user_id,
+                    PasswordReset.token_used == False,  # noqa: E712
+                    PasswordReset.expires_at > datetime.now(timezone.utc),
+                )
+                .order_by(PasswordReset.created_at.desc())
+                .limit(1)
+            )
             result = await self._session.execute(stmt)
             reset_entry = result.scalar_one_or_none()
-            if reset_entry is None:
-                raise ValueError("invalid_token")
-            if reset_entry.token_used:
-                raise ValueError("token_used")
-            now = datetime.now(timezone.utc)
-            if reset_entry.expires_at < now:
-                raise ValueError("token_expired")
-
-            user = await self._session.get(User, reset_entry.user_id)
-            if user is None:
-                raise ValueError("user_not_found")
+            if not reset_entry or not verify_password(token, reset_entry.reset_token):
+                raise ValueError("invalid_or_expired_token")
 
             reset_entry.token_used = True
 
