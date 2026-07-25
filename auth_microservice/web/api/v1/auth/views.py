@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -125,17 +126,36 @@ def _get_casdoor_service(request: Request) -> CasdoorService:
     return service
 
 
-def _parse_org_from_state(state: str) -> int:
-    try:
-        prefix, org_part, _ = state.split(":", 2)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_state") from exc
-    if prefix != "org":
+async def _check_forgot_password_rate_limit(
+    request: Request,
+    redis_pool: ConnectionPool = Depends(get_redis_pool),
+) -> None:
+    """Rate limit forgot-password: max 5 per email/IP per 15 minutes."""
+    redis = Redis(connection_pool=redis_pool)
+    ip = request.client.host if request.client else "unknown"
+    key = f"forgot_pwd_rate_limit:{ip}"
+
+    count = await redis.incr(key)
+    if count == 1:
+        await redis.expire(key, 900)  # 15 minute window
+
+    if count > 5:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many password reset attempts. Try again later.",
+        )
+
+
+def _parse_org_and_nonce_from_state(state: str) -> tuple[int, str]:
+    """Parse state format: org:<org_id>:nonce:<nonce>"""
+    parts = state.split(":")
+    if len(parts) != 4 or parts[0] != "org" or parts[2] != "nonce":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_state")
     try:
-        return int(org_part)
+        org_id = int(parts[1])
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_state") from exc
+    return org_id, parts[3]
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -241,6 +261,7 @@ async def forgot_password(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
     redis_pool: ConnectionPool = Depends(get_redis_pool),
+    _rate_limit: None = Depends(_check_forgot_password_rate_limit),
 ) -> ForgotPasswordResponse:
     auth_service = AuthService(session)
     redis = Redis(connection_pool=redis_pool)
@@ -299,8 +320,26 @@ async def sso_callback(
     request: Request,
     params: SsoCallbackQueryParams = Depends(),
     session: AsyncSession = Depends(get_db_session),
+    redis_pool: ConnectionPool = Depends(get_redis_pool),
 ) -> SsoCallbackResponse:
-    organization_id = _parse_org_from_state(params.state)
+    organization_id, nonce = _parse_org_and_nonce_from_state(params.state)
+
+    # Validate nonce (one-time use, 10-minute expiry)
+    redis = Redis(connection_pool=redis_pool)
+    nonce_key = f"sso_nonce:{nonce}"
+    stored_org_id = await redis.get(nonce_key)
+    if not stored_org_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired SSO state. Please try logging in again.",
+        )
+    if str(organization_id) != stored_org_id.decode():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SSO state mismatch",
+        )
+    await redis.delete(nonce_key)  # One-time use
+
     casdoor_service = _get_casdoor_service(request)
     auth_service = AuthService(session)
     try:
@@ -311,10 +350,36 @@ async def sso_callback(
     profile = exchange.get("profile", {})
     token_payload = exchange.get("token", {})
 
-    try:
-        user = await auth_service.get_or_create_user_from_sso(profile, organization_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    # Only allow SSO login for existing users — no auto-creation (H8)
+    email = profile.get("email")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="missing_profile_data")
+
+    # Look up existing user by SSO provider or email
+    existing_sso = await session.execute(
+        select(User).join(
+            SsoProvider, SsoProvider.user_id == User.user_id
+        ).where(
+            SsoProvider.provider_uid == (profile.get("sub") or profile.get("id")),
+        ),
+    )
+    user = existing_sso.scalar_one_or_none()
+
+    if user is None:
+        # Try finding by email in this org
+        from auth_microservice.db.models.oltp import ContactInformation as CI
+        existing_email = await session.execute(
+            select(User)
+            .join(CI, CI.user_id == User.user_id)
+            .where(CI.email_id == email, User.organization_id == organization_id),
+        )
+        user = existing_email.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No account found for this email. Please contact your school admin to create your account first.",
+        )
 
     provider_uid = profile.get("sub") or profile.get("id")
     email = profile.get("email")
