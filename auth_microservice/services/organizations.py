@@ -15,6 +15,10 @@ from auth_microservice.db.models.oltp import (
     Role,
     RolePermission,
 )
+from auth_microservice.rbac.role_templates import (
+    ROLE_DESCRIPTIONS,
+    ROLE_PERMISSIONS,
+)
 
 ADMIN_PERMISSION_NAMES: list[str] = [
     "org.create",
@@ -239,6 +243,7 @@ class OrganizationService:
         await self._session.flush()
 
         admin_role = await self.ensure_admin_role(organization)
+        await self.ensure_school_roles(organization)
         await self._session.refresh(organization)
         return organization, admin_role
 
@@ -284,6 +289,58 @@ class OrganizationService:
 
         await self._session.flush()
         return role
+
+    async def ensure_school_roles(self, organization: Organization) -> list[Role]:
+        """Ensure the default school roles exist for an organization.
+
+        Mirrors migration f1a7c3d21e08 for organizations created after it ran, so
+        every school has teacher/student/parent/etc. available to assign. Existing
+        roles are left untouched: a school that has re-granted its own permissions
+        keeps them.
+        """
+        roles: list[Role] = []
+
+        for role_name, permission_names in ROLE_PERMISSIONS.items():
+            role = await self._session.scalar(
+                select(Role)
+                .where(Role.organization_id == organization.organization_id)
+                .where(Role.role_name == role_name),
+            )
+            if role is None:
+                role = Role(
+                    organization_id=organization.organization_id,
+                    role_name=role_name,
+                    role_description=ROLE_DESCRIPTIONS.get(role_name),
+                )
+                self._session.add(role)
+                await self._session.flush()
+                await self._session.refresh(role)
+
+            permissions = await self._ensure_permissions(list(permission_names))
+
+            existing_result = await self._session.scalars(
+                select(RolePermission.permission_id).where(
+                    RolePermission.role_id == role.role_id,
+                    RolePermission.organization_id == organization.organization_id,
+                ),
+            )
+            existing = set(existing_result.all())
+
+            for permission in permissions.values():
+                if permission.permission_id in existing:
+                    continue
+                self._session.add(
+                    RolePermission(
+                        role_id=role.role_id,
+                        permission_id=permission.permission_id,
+                        organization_id=organization.organization_id,
+                    ),
+                )
+
+            roles.append(role)
+
+        await self._session.flush()
+        return roles
 
     async def update_organization(
         self,
