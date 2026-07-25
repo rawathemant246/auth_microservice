@@ -123,8 +123,20 @@ async def bulk_create_users(
                         ),
                     )
                     role_obj = role.scalar_one_or_none()
-                if role_obj:
-                    role_id = role_obj.role_id
+                if role_obj is None:
+                    # Previously this fell through and created the user with
+                    # role_id = NULL, which produced accounts that authenticate
+                    # but are refused by every permission check in lms-backend.
+                    # Failing the row is recoverable; a role-less user is not.
+                    errors.append(
+                        BulkUserErrorEntry(
+                            index=idx,
+                            username=entry.username,
+                            error=f"unknown_role:{entry.role_name}",
+                        )
+                    )
+                    continue
+                role_id = role_obj.role_id
 
             generated_password = None
             if entry.password:
