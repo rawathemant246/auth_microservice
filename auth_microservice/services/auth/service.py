@@ -87,10 +87,22 @@ class AuthService:
         *,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> tuple[User, str]:
-        """Authenticate user by username/password and return user plus primary email."""
+    ) -> tuple[User, str | None]:
+        """Authenticate user by username/password and return user plus primary email.
 
-        query = select(User, ContactInformation.email_id).join(ContactInformation, User.user_id == ContactInformation.user_id)
+        The contact join must be an outer join: contact details are optional on a
+        user. As an inner join this silently made every account with no email and
+        no phone impossible to authenticate — the row simply did not come back, so
+        a valid password was indistinguishable from an unknown username. That hit
+        CSV-imported students hardest, since most have neither.
+
+        Email stays optional the whole way down: issue_token only adds the claim
+        when present, and both create_session and UserProfileResponse accept None.
+        """
+
+        query = select(User, ContactInformation.email_id).outerjoin(
+            ContactInformation, User.user_id == ContactInformation.user_id
+        )
         query = query.where(User.username == username)
         result = await self._session.execute(query)
         row = result.first()
