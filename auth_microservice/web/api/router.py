@@ -60,6 +60,9 @@ api_router.include_router(bulk_users.router)
 
 from auth_microservice.web.api.internal import permissions as internal_permissions
 api_router.include_router(internal_permissions.router)
+
+from auth_microservice.web.api.internal import directory as internal_directory
+api_router.include_router(internal_directory.router)
 api_router.include_router(docs.router)
 api_router.include_router(echo.router, prefix="/echo", tags=["echo"])
 api_router.include_router(redis.router, prefix="/redis", tags=["redis"])
