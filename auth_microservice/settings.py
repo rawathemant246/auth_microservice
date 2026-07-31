@@ -4,10 +4,73 @@ from pathlib import Path
 from tempfile import gettempdir
 from typing import Optional
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from yarl import URL
 
 TEMP_DIR = Path(gettempdir())
+
+# ── secret strength, checked at boot ────────────────────────────────────────
+#
+# LMS-backend#16. `jwt_secret_key` used to default to the literal "change-me", and
+# the JWT secret is shared with lms-backend -- so a service booting on that default
+# will happily sign and verify tokens for any user in any school. It has to refuse
+# to start instead.
+#
+# `internal_api_secret` matters for the same reason from the other direction: when it
+# is unset, `internal/views.py` falls *open* for `environment in {"dev", "pytest"}`,
+# and "dev" is this class's default. So an unconfigured deployment serves its
+# internal endpoints to anybody who can reach the port.
+
+MIN_SECRET_LENGTH = 32
+
+# Substrings, matched case-insensitively. A value containing any of them is a
+# placeholder somebody forgot to replace, however long it is -- which is the case
+# that a length check alone lets through.
+_PLACEHOLDER_MARKERS = (
+    "change-me",
+    "changeme",
+    "change_me",
+    "replace-with",
+    "replace_with",
+    "internal-secret",
+    "internal_secret",
+    "your-secret",
+    "yoursecret",
+    "placeholder",
+    "example",
+    "insecure",
+    "todo",
+    "xxxx",
+)
+
+
+def reject_weak_secret(name: str, value: Optional[str]) -> None:
+    """Raise unless `value` is a plausible secret.
+
+    Deliberately not gated on environment. A check that only runs in production is a
+    check nobody has ever seen run.
+    """
+    if not value:
+        raise ValueError(
+            f"{name} is not set. Generate one with `scripts/generate-secrets.sh`; "
+            f"this service will not start without it."
+        )
+
+    lowered = value.lower()
+    for marker in _PLACEHOLDER_MARKERS:
+        if marker in lowered:
+            raise ValueError(
+                f"{name} still contains the placeholder {marker!r}. The JWT secret is "
+                f"shared with lms-backend, so a known value forges any user in any "
+                f"school. Generate one with `scripts/generate-secrets.sh`."
+            )
+
+    if len(value) < MIN_SECRET_LENGTH:
+        raise ValueError(
+            f"{name} is {len(value)} characters; at least {MIN_SECRET_LENGTH} are "
+            f"required. Generate one with `scripts/generate-secrets.sh`."
+        )
 
 
 class LogLevel(str, enum.Enum):
@@ -57,7 +120,10 @@ class Settings(BaseSettings):
     mongodb_database: str = "auth_documents"
 
     # JWT configuration
-    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-me")
+    # No default. It used to be the literal "change-me", which meant a missing
+    # environment variable produced a service that signed tokens with a value in the
+    # source tree. Validated below.
+    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "")
     jwt_algorithm: str = "HS256"
     jwt_access_token_expires_minutes: int = 30
     jwt_refresh_token_expires_minutes: int = 60 * 24 * 14
@@ -155,6 +221,19 @@ class Settings(BaseSettings):
         env_prefix="AUTH_MICROSERVICE_",
         env_file_encoding="utf-8",
     )
+
+    @model_validator(mode="after")
+    def _secrets_must_be_real(self) -> "Settings":
+        """Refuse to start on a placeholder or absent secret.
+
+        Runs when `Settings()` is constructed at import, so the process dies at boot
+        with a message naming the variable, rather than serving traffic it cannot
+        secure. `pytest` is not exempted: a suite that runs on "change-me" is a suite
+        that never exercises this.
+        """
+        reject_weak_secret("JWT_SECRET_KEY", self.jwt_secret_key)
+        reject_weak_secret("INTERNAL_API_SECRET", self.internal_api_secret)
+        return self
 
 
 settings = Settings()
