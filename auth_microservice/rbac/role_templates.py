@@ -42,6 +42,21 @@ _ALL_LMS_PERMISSIONS: tuple[str, ...] = (
     "academic.manage",
     "student.create",
     "student.read",
+    # Capability's one concession to scope, and the reason it exists is written up in
+    # LMS-backend#68. `student.read` cannot express scope: a parent and an accountant
+    # both hold it, and they must not see the same students. lms-backend derives scope
+    # from relationships -- a parent's own children, a teacher's own sections -- and
+    # this is how a caller says "every student in this school" instead.
+    #
+    # It has to be an explicit grant rather than an inference. The tempting shortcut is
+    # "a caller with no student, parent or teacher profile must be office staff, so
+    # give them everything", and that fails open: one broken profile insert and a
+    # student sees the whole school. Absence of a relationship now means absence of
+    # access.
+    #
+    # Governs everything that resolves to a student, not only student profiles --
+    # report cards, invoices, receipts, attendance, tutor sessions.
+    "student.read.all",
     "student.update",
     "student.delete",
     "student.bulk_import",
@@ -141,9 +156,18 @@ ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "message.read",
         "tutor.history.read",
     ),
+    # ---- who legitimately sees the whole school ----
+    #
+    # school_admin and principal get `student.read.all` through _ALL_LMS_PERMISSIONS.
+    # The three below are school-wide operational roles: an accountant bills every
+    # family, a librarian issues a book to any student, a transport manager assigns any
+    # student to a route. Teacher, parent and student are deliberately absent -- their
+    # scope comes from a relationship, and lms-backend refuses what the relationship
+    # does not cover.
     ACCOUNTANT: (
         "school.read",
         "student.read",
+        "student.read.all",
         "fee.structure.manage",
         "fee.collect",
         "fee.read",
@@ -157,11 +181,13 @@ ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     LIBRARIAN: (
         "school.read",
         "student.read",
+        "student.read.all",
         "announcement.read",
     ),
     TRANSPORT_MANAGER: (
         "school.read",
         "student.read",
+        "student.read.all",
         "announcement.read",
     ),
 }
