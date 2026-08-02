@@ -35,9 +35,11 @@ ROLE_DESCRIPTIONS: dict[str, str] = {
 }
 
 # Every LMS permission. 45 were seeded by migration d8e4f92a7b30; `student.read.all`
-# (c7b2e5f14a93) and `timetable.manage` (b4e9d13c6a52) came later, each with its own
-# migration, because changing this tuple alone does not reach a school that already
-# exists -- the templates are only read when an organization's roles are created.
+# (c7b2e5f14a93), `timetable.manage` (b4e9d13c6a52), `staff.attendance.mark` and
+# `staff.attendance.read` (d9c1a5e37f24) and `homework.write` (e2f4b8a6c910) came
+# later, each with its own migration, because changing this tuple alone does not reach
+# a school that already exists -- the templates are only read when an organization's
+# roles are created.
 _ALL_LMS_PERMISSIONS: tuple[str, ...] = (
     "school.setup",
     "school.read",
@@ -97,6 +99,12 @@ _ALL_LMS_PERMISSIONS: tuple[str, ...] = (
     "assignment.create",
     "assignment.read",
     "assignment.grade",
+    # The homework diary, and deliberately not assignment.create. A diary entry has no
+    # due date, no submission and no grade; reusing the assignment permission would
+    # mean it no longer says what it does. Reading is not a permission -- a student
+    # sees their own and a parent their children's, which is row scope. See
+    # LMS-backend#60.
+    "homework.write",
     "exam.create",
     "exam.read",
     "exam.grade",
@@ -132,6 +140,8 @@ ROLE_PERMISSIONS: dict[str, tuple[str, ...]] = {
         "assignment.create",
         "assignment.read",
         "assignment.grade",
+        # Writing the diary is the daily job it exists for.
+        "homework.write",
         "exam.create",
         "exam.read",
         "exam.grade",
