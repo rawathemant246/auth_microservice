@@ -34,12 +34,20 @@ ROLE_DESCRIPTIONS: dict[str, str] = {
     TRANSPORT_MANAGER: "Routes, vehicles, and student transport mapping",
 }
 
-# The 45 LMS permissions seeded by migration d8e4f92a7b30.
+# Every LMS permission. 45 were seeded by migration d8e4f92a7b30; `student.read.all`
+# (c7b2e5f14a93) and `timetable.manage` (b4e9d13c6a52) came later, each with its own
+# migration, because changing this tuple alone does not reach a school that already
+# exists -- the templates are only read when an organization's roles are created.
 _ALL_LMS_PERMISSIONS: tuple[str, ...] = (
     "school.setup",
     "school.read",
     "school.update",
     "academic.manage",
+    # Writes only: creating period definitions and timetable slots. Reading a
+    # timetable is deliberately not a permission -- a teacher, a student and a parent
+    # all need to see it, so a read permission would have to be granted to everyone
+    # and would therefore say nothing. See LMS-backend#59.
+    "timetable.manage",
     "student.create",
     "student.read",
     # Capability's one concession to scope, and the reason it exists is written up in
