@@ -78,6 +78,13 @@ _ALL_LMS_PERMISSIONS: tuple[str, ...] = (
     "attendance.mark",
     "attendance.read",
     "attendance.report",
+    # Staff attendance, and deliberately not the three above. Those are held by every
+    # teacher because marking student attendance is a teacher's daily job; reusing
+    # them here would let any teacher record their own arrival and read the staff
+    # room's leave history, on data that will eventually feed payroll. The shared word
+    # "attendance" is a coincidence, not a shared authority. See LMS-backend#58.
+    "staff.attendance.mark",
+    "staff.attendance.read",
     "fee.structure.manage",
     "fee.collect",
     "fee.read",
